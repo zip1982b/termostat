@@ -16,7 +16,7 @@ Autor: zip1982b
 #include "esp_spi_flash.h"
 
 #include "driver/gpio.h"
-
+#include "freertos/queue.h"
 
 #define GPIO_RELAY1    14
 #define GPIO_RELAY2    12
@@ -27,43 +27,138 @@ Autor: zip1982b
 #define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_ENC_CLK) | (1ULL<<GPIO_ENC_DT) | (1ULL<<GPIO_ENC_SW)) 
 #define ESP_INTR_FLAG_DEFAULT 0
 
+
+/* 	
+	cr	- clockwise rotation
+	ccr	- counter clockwise rotation
+	bp	- button pressed
+*/
+enum action{cr, ccr, bp}; 
+
+portBASE_TYPE xStatusRelay1;
+xTaskHandle xRelay1_Handle;
+
+static xQueueHandle gpio_evt_queue = NULL;
+static xQueueHandle ENC_queue = NULL;
+
 static void IRAM_ATTR gpio_isr_handler(void* arg)
 {
     uint32_t gpio_num = (uint32_t) arg;
-    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+	switch(gpio_num){
+		case GPIO_ENC_CLK:
+				gpio_set_intr_type(GPIO_ENC_CLK, GPIO_INTR_DISABLE);
+				break;
+		case GPIO_ENC_DT:
+				gpio_set_intr_type(GPIO_ENC_DT, GPIO_INTR_DISABLE);
+				break;
+		case GPIO_ENC_SW:
+				gpio_set_intr_type(GPIO_ENC_SW, GPIO_INTR_DISABLE);
+				break;
+	}
+    xQueueSendFromISR(gpio_evt_queue, &gpio_num, 0);
 }
+
 
 
 static void ENC(void* arg)
 {
+	
+	enum action rotate;
+	portBASE_TYPE xStatus;
     uint32_t io_num;
     for(;;) {
-		xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY);
+		io_num = 0;
+		xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY); // the task is blocked until the data arrives
 		if(io_num == GPIO_ENC_CLK)
 		{
-			//vTaskDelay(10 / portTICK_RATE_MS);
-			xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY);
+			xQueueReceive(gpio_evt_queue, &io_num, 100/portTICK_RATE_MS);
+			gpio_set_intr_type(GPIO_ENC_CLK, GPIO_INTR_ANYEDGE); //enable
 			if (io_num == GPIO_ENC_DT)
 			{
-				printf("clockwise rotation\n");
+				rotate = cr;
+				printf("[ENC]clockwise rotation\n");
+				xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
+				gpio_set_intr_type(GPIO_ENC_DT, GPIO_INTR_ANYEDGE);//enable
+				
 			}
 				
 		}	
 		else if(io_num == GPIO_ENC_DT)
 		{
 			//vTaskDelay(10 / portTICK_RATE_MS);
-			xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY);
+			xQueueReceive(gpio_evt_queue, &io_num, 100/portTICK_RATE_MS);
+			gpio_set_intr_type(GPIO_ENC_DT, GPIO_INTR_ANYEDGE);
+			
 			if (io_num == GPIO_ENC_CLK)
 			{
-				printf("counter clockwise rotation\n");
+				rotate = ccr;
+				//printf("[ENC]rotate = %d\n", rotate);
+				printf("[ENC]counter clockwise rotation\n");
+				xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
+				gpio_set_intr_type(GPIO_ENC_CLK, GPIO_INTR_ANYEDGE);
 			}
 				
 		}
 		else if(io_num == GPIO_ENC_SW)
 		{
-			printf("Button is pressed\n");
+			rotate = bp;
+			//printf("[ENC]rotate = %d\n", rotate);
+			printf("[ENC]Button is pressed\n");
+			vTaskDelay(500 / portTICK_RATE_MS);
+			xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
+			gpio_set_intr_type(GPIO_ENC_SW, GPIO_INTR_NEGEDGE);//enable
+			
 		}
     }
+}
+
+
+void vRelay1(void *pvParameter)
+{
+	portBASE_TYPE xStatus;
+	enum action rotate;
+	
+	
+	
+    while(1) {
+		uint8_t down = 0;
+		uint8_t up = 0;
+		uint8_t middle = 0;
+		
+		
+	/***** Read Encoder ***********************/
+		xStatus = xQueueReceive(ENC_queue, &rotate, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго
+		if(xStatus == pdPASS)
+		{
+			printf("[vRelay1]rotate = %d\n", rotate);
+			switch(rotate){
+				case 0: //down = clockwise
+					down = 1;
+					break;
+				case 1: //up = counter clockwise
+					up = 1;
+					break;
+				case 2: //middle = button pressed
+					middle = 1;
+					break;
+			}
+		}
+	/***** End Read Encoder ***********************/	
+		
+		
+		
+	/*** Relay ***/
+		if(down){
+			gpio_set_level(GPIO_RELAY1, 1);
+		}
+		if(up){
+			gpio_set_level(GPIO_RELAY1, 0);
+		}
+		
+		
+	
+    }
+	vTaskDelete(NULL);
 }
 
 
@@ -87,10 +182,10 @@ void app_main()
 	
 	
 	/*** GPIO init ***/
-    gpio_config_t io_conf;
+	gpio_config_t io_conf;
 	//Настройки GPIO для релейного ВЫХОДа
     //disable interrupt - отключитли прерывания
-    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
 	
     //set as output mode - установка в режим Выход
     io_conf.mode = GPIO_MODE_OUTPUT;
@@ -125,9 +220,11 @@ void app_main()
 	
 	
 	//create a queue to handle gpio event from isr
-    gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+    gpio_evt_queue = xQueueCreate(5, sizeof(uint32_t));
     //start gpio task
-    xTaskCreate(ENC, "ENC", 2048, NULL, 10, NULL);
+    xTaskCreate(ENC, "ENC", 1548, NULL, 10, NULL);
+	
+	ENC_queue = xQueueCreate(10, sizeof(uint32_t));
 	
 	//install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
@@ -137,6 +234,13 @@ void app_main()
     gpio_isr_handler_add(GPIO_ENC_DT, gpio_isr_handler, (void*) GPIO_ENC_DT);
 	//hook isr handler for specific gpio pin
     gpio_isr_handler_add(GPIO_ENC_SW, gpio_isr_handler, (void*) GPIO_ENC_SW);
+	
+	
+	xStatusRelay1 = xTaskCreate(vRelay1, "vRelay1", 1024 * 2, NULL, 10, &xRelay1_Handle);
+		if(xStatusRelay1 == pdPASS)
+			printf("Task vRelay1 is created!\n");
+		else
+			printf("Task vRelay1 is not created\n");
 	
 	
 }
