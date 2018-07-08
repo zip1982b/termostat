@@ -8,6 +8,7 @@ Autor: zip1982b
 */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <esp_types.h>
 
 #include "freertos/FreeRTOS.h"
@@ -18,6 +19,32 @@ Autor: zip1982b
 #include "driver/gpio.h"
 #include "freertos/queue.h"
 
+
+#include "ssd1306.h"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+ * GPIO status:
+ *	GPIO14: output (relay1)
+ *	GPIO12: output (relay2)
+ *	GPIO33:(clk - encoder) input
+ *	GPIO25:(dt - encoder) input
+ *	GPIO26:(sw - encoder) input
+ *
+*/
 #define GPIO_RELAY1    14
 #define GPIO_RELAY2    12
 #define GPIO_OUTPUT_PIN_SEL  ((1ULL<<GPIO_RELAY1) | (1ULL<<GPIO_RELAY2))
@@ -157,6 +184,201 @@ void vRelay1(void *pvParameter)
 		
 		
 	
+    }
+	vTaskDelete(NULL);
+}
+
+
+void vDisplay(void *pvParameter)
+{
+	portBASE_TYPE xStatus;
+	enum action rotate;
+	uint8_t change = 1;
+	SSD1306_Init();
+	
+	uint8_t frame = 1;
+	
+	
+    while(1) {
+		down = 0;
+		up = 0;
+		middle = 0;
+		
+		if(change)
+		{
+			vDrawMenu();
+			change = 0;
+		}
+	/***** Read Encoder ***********************/
+		xStatus = xQueueReceive(ENC_queue, &rotate, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго
+		if(xStatus == pdPASS)
+		{
+			change = 1;
+			printf("[vDisplay]rotate = %d\n", rotate);
+			switch(rotate){
+				case 0: //down = clockwise
+					down = 1;
+					break;
+				case 1: //up = counter clockwise
+					up = 1;
+					break;
+				case 2: //middle = button pressed
+					middle = 1;
+					break;
+			}
+		}
+	/***** End Read Encoder ***********************/	
+		
+		
+		switch(state){
+			/*** Frame 1 ************************************************/
+			case 10:
+				printf("State = 10\n");
+				frame = 1;
+				if(down) { menuitem++;}
+				else if(up) { menuitem--; }
+				
+				// go to Contrast
+				else if(middle && menuitem == 1) { state = 1; }
+				
+				// go to Volume
+				else if(middle && menuitem == 2) { state = 2; }
+				
+				// go to Language
+				else if(middle && menuitem == 3) { state = 3; }
+				
+				// go to Difficulty
+				else if(middle && menuitem == 4) { state = 4; }
+				
+				
+				if(menuitem == 0) { menuitem = 1; }
+				
+				if(menuitem > 4){
+					state = 20;
+					frame = 2;
+				}
+
+				break;
+			/*********************************************************/
+			
+			/*** Frame 2 *********************************************/
+			case 20:
+				printf("State = 20\n");
+				if(down) { menuitem++; }
+				else if(up) { menuitem--; }
+				
+				// go to Volume
+				else if(middle && menuitem == 2) { state = 2; }
+				
+				// go to Language
+				else if(middle && menuitem == 3) { state = 3; }
+				
+				// go to Difficulty
+				else if(middle && menuitem == 4) { state = 4; }
+				
+				// go to Relay
+				else if(middle && menuitem == 5) { state = 5; }
+				
+				if(menuitem > 5){ 
+					state = 30;
+					frame = 3;
+				}
+				else if(menuitem < 2) { 
+					state = 10;
+					frame = 1;
+				}
+				
+				
+				break;
+			/*********************************************************/
+			
+			/*** Frame 3 *********************************************/
+			case 30:
+				printf("State = 30\n");
+				if(up) { menuitem--; }
+				else if(down) { menuitem++; }
+				else if(menuitem == 7) { menuitem = 6; }
+				
+				// go to Language
+				else if(middle && menuitem == 3) { state = 3; }
+				
+				// go to Difficulty
+				else if(middle && menuitem == 4) { state = 4; }
+				
+				// go to Relay
+				else if(middle && menuitem == 5) { state = 5; }
+				
+				if(menuitem < 3) { 
+					state = 20;
+					frame = 2;
+				}
+				
+				if(middle && menuitem == 6) { resetDefaults(); }
+				
+				break;
+			/********************************************************/
+			
+			/*** Contrast ***/
+			case 1:
+				printf("State = 1\n");
+				if(down){
+					contrast++;
+					vSetContrast(contrast);
+				}
+				else if(up){
+					contrast--;
+					vSetContrast(contrast);
+				}
+				else if(middle && frame == 1) { state = 10; }
+				break;
+				
+			/*** Volume ***/
+			case 2:
+				printf("State = 2\n");
+				if(down){ volume++; }
+				else if(up){ volume--; }
+				else if(middle && frame == 1) { state = 10; } // go to Frame 1
+				else if(middle && frame == 2) { state = 20; } // go to Frame 2
+				break;
+			
+			/*** Language ***/
+			case 3:
+				printf("State = 3\n");
+				if(down){ selectedLanguage++; }
+				else if(up){ selectedLanguage--; }
+				else if(middle && frame == 1){ state = 10; }
+				else if(middle && frame == 2){ state = 20; }
+				else if(middle && frame == 3){ state = 30; }
+				
+				if(selectedLanguage == -1) { selectedLanguage = 2; }
+				else if(selectedLanguage == 3) { selectedLanguage = 0; }
+				break;
+			
+			/*** Difficulty ***/
+			case 4:
+				printf("State = 4\n");
+				if(down){ selectedDifficulty++; }
+				else if(up){ selectedDifficulty--; }
+				else if(middle && frame == 1){ state = 10; }
+				else if(middle && frame == 2){ state = 20; }
+				else if(middle && frame == 3){ state = 30; }
+				
+				if(selectedDifficulty == -1) { selectedDifficulty = 1;}
+				else if(selectedDifficulty == 2) { selectedDifficulty = 0;}
+				break;
+			
+			/*** Relay ***/
+			case 5:
+				printf("State = 5\n");
+				if(down){ selectedRelay1++; }
+				else if(up){ selectedRelay1--; }
+				else if(middle && frame == 2){ state = 20; }
+				else if(middle && frame == 3){ state = 30; }
+				
+				if(selectedRelay1 >= 2) { selectedRelay1 = 0; }
+				else if(selectedRelay1 <= -1) { selectedRelay1 = 1; }
+				break;
+		}
     }
 	vTaskDelete(NULL);
 }
