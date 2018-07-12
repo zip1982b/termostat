@@ -530,17 +530,16 @@ void vSetContrast(uint8_t contrast) {
 
 void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume, int selectedLanguage, int selectedDifficulty, int selectedRelay1)
 {
-	char menuItem1[] = "Contrast";
-	char menuItem2[] = "Volume";
-	char menuItem3[] = "Language";
-	char menuItem4[] = "Difficulty";
-	char menuItem5[] = "Relay1";
-	char menuItem6[] = "Reset";
+	char menuItem1[] = "Set relay";
+	char menuItem2[] = "Set temp";
+	char menuItem3[] = "Process view";
+	char menuItem4[] = "Chip info";
+	char menuItem5[] = "Network info";
+	char menuItem6[] = "Contrast";
+	char menuItem7[] = "Display sleep";
+	char menuItem8[] = "Reset CPU";
 	
-	char *language[3] = { "EN", "ES", "EL" };
-	char *difficulty[2] = { "EASY", "HARD" };
-	char *Relay1[2] = { "OFF", "ON" };
-	
+	char *relay[2] = { "Relay1", "Relay2" };
 	
 	if(state > 5)
 	{
@@ -552,7 +551,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 	/*************** state 10 ******************************/
 		if(menuitem == 1 && state == 10)
 		{
-			vDisplayMenuItem(menuItem1, 15, 1); // Contrast
+			vDisplayMenuItem(menuItem1, 15, 1); //Contrast
 			vDisplayMenuItem(menuItem2, 25, 0);
 			vDisplayMenuItem(menuItem3, 35, 0);
 			vDisplayMenuItem(menuItem4, 45, 0);
@@ -561,7 +560,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		else if(menuitem == 2 && state == 10)
 		{
 			vDisplayMenuItem(menuItem1, 15, 0);
-			vDisplayMenuItem(menuItem2, 25, 1); // Volume
+			vDisplayMenuItem(menuItem2, 25, 1); //Volume
 			vDisplayMenuItem(menuItem3, 35, 0);
 			vDisplayMenuItem(menuItem4, 45, 0);
 			SSD1306_UpdateScreen();
@@ -570,7 +569,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		{
 			vDisplayMenuItem(menuItem1, 15, 0);
 			vDisplayMenuItem(menuItem2, 25, 0);
-			vDisplayMenuItem(menuItem3, 35, 1); // Language
+			vDisplayMenuItem(menuItem3, 35, 1); //Language
 			vDisplayMenuItem(menuItem4, 45, 0);
 			SSD1306_UpdateScreen();
 		}   
@@ -579,7 +578,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 			vDisplayMenuItem(menuItem1, 15, 0);
 			vDisplayMenuItem(menuItem2, 25, 0);
 			vDisplayMenuItem(menuItem3, 35, 0);
-			vDisplayMenuItem(menuItem4, 45, 1); // Difficulty
+			vDisplayMenuItem(menuItem4, 45, 1); //Difficulty
 			SSD1306_UpdateScreen();
 		}
 	/************ state 20 **********************************/
@@ -648,7 +647,72 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 			vDisplayMenuItem(menuItem6, 45, 1);
 			SSD1306_UpdateScreen();
 		}
-	
+		/************* state 40 *********************************/
+		else if(menuitem == 4 && state == 40)
+		{
+			vDisplayMenuItem(menuItem4, 15, 1);
+			vDisplayMenuItem(menuItem5, 25, 0);
+			vDisplayMenuItem(menuItem6, 35, 0);
+			vDisplayMenuItem(menuItem7, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 5 && state == 40)
+		{
+			vDisplayMenuItem(menuItem4, 15, 0);
+			vDisplayMenuItem(menuItem5, 25, 1);
+			vDisplayMenuItem(menuItem6, 35, 0);
+			vDisplayMenuItem(menuItem7, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 6 && state == 40)
+		{
+			vDisplayMenuItem(menuItem4, 15, 0);
+			vDisplayMenuItem(menuItem5, 25, 0);
+			vDisplayMenuItem(menuItem6, 35, 1);
+			vDisplayMenuItem(menuItem7, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 7 && state == 40)
+		{
+			vDisplayMenuItem(menuItem4, 15, 0);
+			vDisplayMenuItem(menuItem5, 25, 0);
+			vDisplayMenuItem(menuItem6, 35, 0);
+			vDisplayMenuItem(menuItem7, 45, 1);
+			SSD1306_UpdateScreen();
+		}
+		/************* state 50 *********************************/
+		else if(menuitem == 5 && state == 50)
+		{
+			vDisplayMenuItem(menuItem5, 15, 1);
+			vDisplayMenuItem(menuItem6, 25, 0);
+			vDisplayMenuItem(menuItem7, 35, 0);
+			vDisplayMenuItem(menuItem8, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 6 && state == 50)
+		{
+			vDisplayMenuItem(menuItem5, 15, 0);
+			vDisplayMenuItem(menuItem6, 25, 1);
+			vDisplayMenuItem(menuItem7, 35, 0);
+			vDisplayMenuItem(menuItem8, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 7 && state == 50)
+		{
+			vDisplayMenuItem(menuItem5, 15, 0);
+			vDisplayMenuItem(menuItem6, 25, 0);
+			vDisplayMenuItem(menuItem7, 35, 1);
+			vDisplayMenuItem(menuItem8, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 8 && state == 50)
+		{
+			vDisplayMenuItem(menuItem5, 15, 0);
+			vDisplayMenuItem(menuItem6, 25, 0);
+			vDisplayMenuItem(menuItem7, 35, 0);
+			vDisplayMenuItem(menuItem8, 45, 1);
+			SSD1306_UpdateScreen();
+		}
 	/***************** End state *****************************/
 	}
 	/***************** Page 1 end ***************************/

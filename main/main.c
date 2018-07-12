@@ -119,11 +119,9 @@ void vDisplay(void *pvParameter)
 	uint8_t state = 10; // default state
 	uint8_t frame = 1;
 	uint8_t menuitem = 1; // default item - Contrast
+	
 	uint8_t contrast = 100; // default contrast value
-	uint8_t volume = 50; // default "volume" value
-	int selectedLanguage = 0;
-	int selectedDifficulty = 0;
-	int selectedRelay1 = 0;
+	uint8_t temp = 22; // default temp value
 
 	uint8_t change = 1;
 	
@@ -137,10 +135,10 @@ void vDisplay(void *pvParameter)
 		down_cw = 0;
 		up_ccw = 0;
 		press_button = 0;
-		
+0		
 		if(change)
 		{
-			vDrawMenu(menuitem, state, contrast, volume, selectedLanguage, selectedDifficulty, selectedRelay1);
+			vDrawMenu(menuitem, state, contrast, temp);
 			change = 0;
 		}
 	/***** Read Encoder ***********************/
@@ -170,22 +168,22 @@ void vDisplay(void *pvParameter)
 		switch(state){
 			/*** Frame 1 ************************************************/
 			case 10:
-				//printf("State = 10\n");
+				printf("State = 10\n");
 				frame = 1;
 				if(down_cw) { menuitem++;}
 				else if(up_ccw) { menuitem--; }
 				
 				// go to Contrast
-				else if(press_button && menuitem == 1) { state = 1; }
+				//else if(press_button && menuitem == 1) { state = 1; }
 				
 				// go to Volume
-				else if(press_button && menuitem == 2) { state = 2; }
+				//else if(press_button && menuitem == 2) { state = 2; }
 				
 				// go to Language
-				else if(press_button && menuitem == 3) { state = 3; }
+				//else if(press_button && menuitem == 3) { state = 3; }
 				
 				// go to Difficulty
-				else if(press_button && menuitem == 4) { state = 4; }
+				//else if(press_button && menuitem == 4) { state = 4; }
 				
 				
 				if(menuitem == 0) { menuitem = 1; }
@@ -200,21 +198,21 @@ void vDisplay(void *pvParameter)
 			
 			/*** Frame 2 *********************************************/
 			case 20:
-				//printf("State = 20\n");
+				printf("State = 20\n");
 				if(down_cw) { menuitem++; }
 				else if(up_ccw) { menuitem--; }
 				
 				// go to Volume
-				else if(press_button && menuitem == 2) { state = 2; }
+				//else if(press_button && menuitem == 2) { state = 2; }
 				
 				// go to Language
-				else if(press_button && menuitem == 3) { state = 3; }
+				//else if(press_button && menuitem == 3) { state = 3; }
 				
 				// go to Difficulty
-				else if(press_button && menuitem == 4) { state = 4; }
+				//else if(press_button && menuitem == 4) { state = 4; }
 				
 				// go to Relay
-				else if(press_button && menuitem == 5) { state = 5; }
+				//else if(press_button && menuitem == 5) { state = 5; }
 				
 				if(menuitem > 5){ 
 					state = 30;
@@ -229,25 +227,29 @@ void vDisplay(void *pvParameter)
 			
 			/*** Frame 3 *********************************************/
 			case 30:
-				//printf("State = 30\n");
+				printf("State = 30\n");
 				if(up_ccw) { menuitem--; }
 				else if(down_cw) { menuitem++; }
-				else if(menuitem == 7) { menuitem = 6; }
 				
 				// go to Language
-				else if(press_button && menuitem == 3) { state = 3; }
+				//else if(press_button && menuitem == 3) { state = 3; }
 				
 				// go to Difficulty
-				else if(press_button && menuitem == 4) { state = 4; }
+				//else if(press_button && menuitem == 4) { state = 4; }
 				
 				// go to Relay
-				else if(press_button && menuitem == 5) { state = 5; }
+				//else if(press_button && menuitem == 5) { state = 5; }
 				
 				if(menuitem < 3) { 
 					state = 20;
 					frame = 2;
 				}
+				else if(menuitem > 6) {
+					state = 40;
+					frame = 4;
+				}
 				
+				/*
 				if(press_button && menuitem == 6) { 
 					contrast = 100;
 					volume = 50;
@@ -257,6 +259,77 @@ void vDisplay(void *pvParameter)
 					selectedRelay1 = 0;
 					turnRelay1_Off();
 				}
+				*/
+				break;
+			/********************************************************/
+			
+			/*** Frame 4 *********************************************/
+			case 40:
+				printf("State = 40\n");
+				if(up_ccw) { menuitem--; }
+				else if(down_cw) { menuitem++; }
+				
+				// go to Language
+				//else if(press_button && menuitem == 3) { state = 3; }
+				
+				// go to Difficulty
+				//else if(press_button && menuitem == 4) { state = 4; }
+				
+				// go to Relay
+				//else if(press_button && menuitem == 5) { state = 5; }
+				
+				if(menuitem < 4) { 
+					state = 30;
+					frame = 3;
+				}
+				else if(menuitem > 7) {
+					state = 50;
+					frame = 5;
+				}
+				/*
+				if(press_button && menuitem == 6) { 
+					contrast = 100;
+					volume = 50;
+					selectedLanguage = 0;
+					selectedDifficulty = 0;
+					vSetContrast(contrast);
+					selectedRelay1 = 0;
+					turnRelay1_Off();
+				} */
+				
+				break;
+			/********************************************************/
+			
+			/*** Frame 5 *********************************************/
+			case 50:
+				printf("State = 50\n");
+				if(up_ccw) { menuitem--; }
+				else if(down_cw) { menuitem++; }
+				else if(menuitem == 9) { menuitem = 8; }
+				// go to Language
+				//else if(press_button && menuitem == 3) { state = 3; }
+				
+				// go to Difficulty
+				//else if(press_button && menuitem == 4) { state = 4; }
+				
+				// go to Relay
+				//else if(press_button && menuitem == 5) { state = 5; }
+				
+				if(menuitem < 5) { 
+					state = 40;
+					frame = 4;
+				}
+				
+				/*
+				if(press_button && menuitem == 6) { 
+					contrast = 100;
+					volume = 50;
+					selectedLanguage = 0;
+					selectedDifficulty = 0;
+					vSetContrast(contrast);
+					selectedRelay1 = 0;
+					turnRelay1_Off();
+				} */
 				
 				break;
 			/********************************************************/
