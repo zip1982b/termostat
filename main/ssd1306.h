@@ -236,7 +236,8 @@ void SSD1306_DrawFilledCircle(int16_t x0, int16_t y0, int16_t r, SSD1306_COLOR_t
 
 
 
-void vDrawMenu(uint8_t menuitem, uint8_t state);
+//void vDrawMenu(uint8_t menuitem, uint8_t state);
+void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume, int selectedLanguage, int selectedDifficulty, int selectedRelay1);
 
 void vSetContrast(uint8_t contrast);
 

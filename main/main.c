@@ -56,10 +56,10 @@ Autor: zip1982b
 #define ESP_INTR_FLAG_DEFAULT 0
 
 
-void vDrawMenu(uint8_t menu, uint8_t state);
+//void vDrawMenu(uint8_t menu, uint8_t state);
 void vDisplayMenuItem(char *item, uint8_t position, uint8_t selected);
-void vDisplayMenuPage(char *menuItem, uint8_t *value);
-void vDisplayCharMenuPage(char *menuitem, char *value);
+//void vDisplayMenuPage(char *menuItem, uint8_t *value);
+//void vDisplayCharMenuPage(char *menuitem, char *value);
 
 
 /* 	
@@ -190,7 +190,7 @@ void vDisplay(void *pvParameter)
 		
 		if(change)
 		{
-			vDrawMenu(menuitem, state);
+			vDrawMenu(menuitem, state, contrast, volume, selectedLanguage, selectedDifficulty, selectedRelay1);
 			change = 0;
 		}
 	/***** Read Encoder ***********************/
@@ -274,8 +274,6 @@ void vDisplay(void *pvParameter)
 					state = 10;
 					frame = 1;
 				}
-				
-				
 				break;
 			/*********************************************************/
 			
@@ -395,7 +393,7 @@ void resetDefaults(void)
   
   
 
-void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume, int selectedLanguage)
+void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume, int selectedLanguage, int selectedDifficulty, int selectedRelay1)
 {
 	char menuItem1[] = "Contrast";
 	char menuItem2[] = "Volume";
@@ -404,9 +402,9 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 	char menuItem5[] = "Relay1";
 	char menuItem6[] = "Reset";
 	
-	char language[3] = { "EN", "ES", "EL" };
-	char difficulty[2] = { "EASY", "HARD" };
-	char Relay1[2] = { "OFF", "ON" };
+	char *language[3] = { "EN", "ES", "EL" };
+	char *difficulty[2] = { "EASY", "HARD" };
+	char *Relay1[2] = { "OFF", "ON" };
 	
 	
 	if(state > 5)
@@ -440,7 +438,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 			vDisplayMenuItem(menuItem3, 35, 1); // Language
 			vDisplayMenuItem(menuItem4, 45, 0);
 			SSD1306_UpdateScreen();
-		} eds   
+		}   
 		else if(menuitem == 4 && state == 10)
 		{
 			vDisplayMenuItem(menuItem1, 15, 0);
@@ -561,22 +559,42 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		SSD1306_GotoXY(5, 15);
 		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 35);
-		SSD1306_Puts(value, &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts(language[selectedLanguage], &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 		//vDisplayCharMenuPage(menuItem3, language[selectedLanguage]);
 	
 	
-	else if(state < 10 && menuitem == 4)
-		vDisplayCharMenuPage(menuItem4, difficulty[selectedDifficulty]);
+	else if(state < 10 && menuitem == 4){
+		SSD1306_Fill(SSD1306_COLOR_BLACK);
+		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
+		SSD1306_Puts(menuItem4, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
+		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
+		SSD1306_GotoXY(5, 15);
+		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(5, 35);
+		SSD1306_Puts(difficulty[selectedDifficulty], &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_UpdateScreen();
+	}
+		//vDisplayCharMenuPage(menuItem4, difficulty[selectedDifficulty]);
 	
 	
-	else if(state < 10 && menuitem == 5)
-		vDisplayCharMenuPage(menuItem5, Relay1[selectedRelay1]);
+	else if(state < 10 && menuitem == 5){
+		SSD1306_Fill(SSD1306_COLOR_BLACK);
+		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
+		SSD1306_Puts(menuItem5, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
+		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
+		SSD1306_GotoXY(5, 15);
+		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(5, 35);
+		SSD1306_Puts(Relay1[selectedRelay1], &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_UpdateScreen();
 		if(selectedRelay1 == 1)
 			turnRelay1_On();
 		else if(selectedRelay1 == 0)
-			turnRelay1_Off();	
+			turnRelay1_Off();
+	}
+		//vDisplayCharMenuPage(menuItem5, Relay1[selectedRelay1]);	
 }
 
 
@@ -599,39 +617,12 @@ void vDisplayMenuItem(char *item, uint8_t position, uint8_t selected)
 
 
 
-void vDisplayMenuPage(char *menuitem, uint8_t *value)
-{
-	SSD1306_Fill(SSD1306_COLOR_BLACK);
-	//SSD1306_UpdateScreen();
-	SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
-	SSD1306_Puts(menuitem, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
-	SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
-	SSD1306_GotoXY(5, 15);
-	SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
-	SSD1306_GotoXY(5, 35);
-	char v[24];
-	itoa(*value, v, 10);
-	//printf("v = %s\n", v);
-	SSD1306_Puts(v, &Font_11x18, SSD1306_COLOR_WHITE);
-	SSD1306_UpdateScreen();
-}
 
 
 
 
-void vDisplayCharMenuPage(char *menuitem, char *value)
-{
-	SSD1306_Fill(SSD1306_COLOR_BLACK);
-	//SSD1306_UpdateScreen();
-	SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
-	SSD1306_Puts(menuitem, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
-	SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
-	SSD1306_GotoXY(5, 15);
-	SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
-	SSD1306_GotoXY(5, 35);
-	SSD1306_Puts(value, &Font_11x18, SSD1306_COLOR_WHITE);
-	SSD1306_UpdateScreen();
-}
+
+
 
 
 void turnRelay1_Off(void)
@@ -678,10 +669,10 @@ void app_main()
     io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;
 	
     //disable pull-down_cw mode - отключитли подтяжку к земле
-    io_conf.pull_down_cw_en = 0;
+    io_conf.pull_down_en = 0;
 	
     //disable pull-up_ccw mode - отключили подтяжку к питанию
-    io_conf.pull_up_ccw_en = 0;
+    io_conf.pull_up_en = 0;
 	
     //configure GPIO with the given settings - конфигурирование портов с данными настройками (Выход)
     gpio_config(&io_conf);
