@@ -23,29 +23,6 @@ Autor: zip1982b
 #include "ssd1306.h"
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//void vDrawMenu(uint8_t menu, uint8_t state);
-
-//void vDisplayMenuPage(char *menuItem, uint8_t *value);
-//void vDisplayCharMenuPage(char *menuitem, char *value);
-
-
 /* 	
 	cr	- clockwise rotation
 	ccr	- counter clockwise rotation
@@ -167,7 +144,7 @@ void vDisplay(void *pvParameter)
 			change = 0;
 		}
 	/***** Read Encoder ***********************/
-		xStatusReceive = xQueueReceive(ENC_queue, &rotate, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго
+		xStatusReceive = xQueueReceive(ENC_queue, &rotate, portMAX_DELAY); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
 		if(xStatusReceive == pdPASS)
 		{
 			change = 1;
@@ -184,9 +161,9 @@ void vDisplay(void *pvParameter)
 					break;
 			}
 		}
-		else
-			//printf("[vDisplay]xStatusReceive = %s\n", xStatusReceive);
-			printf("[vDisplay]xStatusReceive not pdPass\n");
+		//else
+			printf("[vDisplay]xStatusReceive = %d\n", xStatusReceive);
+			//printf("[vDisplay]xStatusReceive not pdPass\n");
 	/***** End Read Encoder ***********************/	
 		
 		
