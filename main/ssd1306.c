@@ -37,6 +37,9 @@
 
 
 
+
+
+
 extern uint8_t contrast;
 
 
@@ -525,6 +528,233 @@ void vSetContrast(uint8_t contrast) {
 	//SSD1306_WRITECOMMAND(0x);  
 }
 
+void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume, int selectedLanguage, int selectedDifficulty, int selectedRelay1)
+{
+	char menuItem1[] = "Contrast";
+	char menuItem2[] = "Volume";
+	char menuItem3[] = "Language";
+	char menuItem4[] = "Difficulty";
+	char menuItem5[] = "Relay1";
+	char menuItem6[] = "Reset";
+	
+	char *language[3] = { "EN", "ES", "EL" };
+	char *difficulty[2] = { "EASY", "HARD" };
+	char *Relay1[2] = { "OFF", "ON" };
+	
+	
+	if(state > 5)
+	{
+		SSD1306_Fill(SSD1306_COLOR_BLACK);
+		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
+		SSD1306_Puts("MAIN MENU", &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
+		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE);
+	
+	/*************** state 10 ******************************/
+		if(menuitem == 1 && state == 10)
+		{
+			vDisplayMenuItem(menuItem1, 15, 1); // Contrast
+			vDisplayMenuItem(menuItem2, 25, 0);
+			vDisplayMenuItem(menuItem3, 35, 0);
+			vDisplayMenuItem(menuItem4, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 2 && state == 10)
+		{
+			vDisplayMenuItem(menuItem1, 15, 0);
+			vDisplayMenuItem(menuItem2, 25, 1); // Volume
+			vDisplayMenuItem(menuItem3, 35, 0);
+			vDisplayMenuItem(menuItem4, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 3 && state == 10)
+		{
+			vDisplayMenuItem(menuItem1, 15, 0);
+			vDisplayMenuItem(menuItem2, 25, 0);
+			vDisplayMenuItem(menuItem3, 35, 1); // Language
+			vDisplayMenuItem(menuItem4, 45, 0);
+			SSD1306_UpdateScreen();
+		}   
+		else if(menuitem == 4 && state == 10)
+		{
+			vDisplayMenuItem(menuItem1, 15, 0);
+			vDisplayMenuItem(menuItem2, 25, 0);
+			vDisplayMenuItem(menuItem3, 35, 0);
+			vDisplayMenuItem(menuItem4, 45, 1); // Difficulty
+			SSD1306_UpdateScreen();
+		}
+	/************ state 20 **********************************/
+		else if(menuitem == 2 && state == 20)
+		{
+			vDisplayMenuItem(menuItem2, 15, 1);
+			vDisplayMenuItem(menuItem3, 25, 0);
+			vDisplayMenuItem(menuItem4, 35, 0);
+			vDisplayMenuItem(menuItem5, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 3 && state == 20)
+		{
+			vDisplayMenuItem(menuItem2, 15, 0);
+			vDisplayMenuItem(menuItem3, 25, 1);
+			vDisplayMenuItem(menuItem4, 35, 0);
+			vDisplayMenuItem(menuItem5, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 4 && state == 20)
+		{
+			vDisplayMenuItem(menuItem2, 15, 0);
+			vDisplayMenuItem(menuItem3, 25, 0);
+			vDisplayMenuItem(menuItem4, 35, 1);
+			vDisplayMenuItem(menuItem5, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 5 && state == 20)
+		{
+			vDisplayMenuItem(menuItem2, 15, 0);
+			vDisplayMenuItem(menuItem3, 25, 0);
+			vDisplayMenuItem(menuItem4, 35, 0);
+			vDisplayMenuItem(menuItem5, 45, 1);
+			SSD1306_UpdateScreen();
+		}
+	/************* state 30 *********************************/
+		else if(menuitem == 3 && state == 30)
+		{
+			vDisplayMenuItem(menuItem3, 15, 1);
+			vDisplayMenuItem(menuItem4, 25, 0);
+			vDisplayMenuItem(menuItem5, 35, 0);
+			vDisplayMenuItem(menuItem6, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 4 && state == 30)
+		{
+			vDisplayMenuItem(menuItem3, 15, 0);
+			vDisplayMenuItem(menuItem4, 25, 1);
+			vDisplayMenuItem(menuItem5, 35, 0);
+			vDisplayMenuItem(menuItem6, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 5 && state == 30)
+		{
+			vDisplayMenuItem(menuItem3, 15, 0);
+			vDisplayMenuItem(menuItem4, 25, 0);
+			vDisplayMenuItem(menuItem5, 35, 1);
+			vDisplayMenuItem(menuItem6, 45, 0);
+			SSD1306_UpdateScreen();
+		}
+		else if(menuitem == 6 && state == 30)
+		{
+			vDisplayMenuItem(menuItem3, 15, 0);
+			vDisplayMenuItem(menuItem4, 25, 0);
+			vDisplayMenuItem(menuItem5, 35, 0);
+			vDisplayMenuItem(menuItem6, 45, 1);
+			SSD1306_UpdateScreen();
+		}
+	
+	/***************** End state *****************************/
+	}
+	/***************** Page 1 end ***************************/
+	
+	/*****************  Page 2 ******************************/
+	else if(state < 10 && menuitem == 1){
+		SSD1306_Fill(SSD1306_COLOR_BLACK);
+		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
+		SSD1306_Puts(menuItem1, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
+		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
+		SSD1306_GotoXY(5, 15);
+		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(5, 35);
+		char v[24];
+		itoa(contrast, v, 10);
+		SSD1306_Puts(v, &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_UpdateScreen();
+	}
+	
+	
+	else if(state < 10 && menuitem == 2){
+		SSD1306_Fill(SSD1306_COLOR_BLACK);
+		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
+		SSD1306_Puts(menuItem2, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
+		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
+		SSD1306_GotoXY(5, 15);
+		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(5, 35);
+		char v[24];
+		itoa(volume, v, 10);
+		SSD1306_Puts(v, &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_UpdateScreen();
+	}
+	
+	
+	else if(state < 10 && menuitem == 3){
+		SSD1306_Fill(SSD1306_COLOR_BLACK);
+		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
+		SSD1306_Puts(menuItem3, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
+		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
+		SSD1306_GotoXY(5, 15);
+		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(5, 35);
+		SSD1306_Puts(language[selectedLanguage], &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_UpdateScreen();
+	}
+	
+	
+	else if(state < 10 && menuitem == 4){
+		SSD1306_Fill(SSD1306_COLOR_BLACK);
+		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
+		SSD1306_Puts(menuItem4, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
+		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
+		SSD1306_GotoXY(5, 15);
+		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(5, 35);
+		SSD1306_Puts(difficulty[selectedDifficulty], &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_UpdateScreen();
+	}
+	
+	
+	else if(state < 10 && menuitem == 5){
+		SSD1306_Fill(SSD1306_COLOR_BLACK);
+		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
+		SSD1306_Puts(menuItem5, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
+		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
+		SSD1306_GotoXY(5, 15);
+		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(5, 35);
+		SSD1306_Puts(Relay1[selectedRelay1], &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_UpdateScreen();
+		if(selectedRelay1 == 1)
+			turnRelay1_On();
+		else if(selectedRelay1 == 0)
+			turnRelay1_Off();
+	}
+}
 
+
+
+void vDisplayMenuItem(char *item, uint8_t position, uint8_t selected)
+{
+	if(selected)
+	{
+		SSD1306_GotoXY(0, position);
+		SSD1306_Puts(">", &Font_7x10, SSD1306_COLOR_BLACK); // шрифт Font_7x10, цвет чёрным
+		SSD1306_Puts(item, &Font_7x10, SSD1306_COLOR_BLACK); // шрифт Font_7x10, цвет чёрным
+	}
+	else
+	{
+		SSD1306_GotoXY(0, position);
+		SSD1306_Puts(">", &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, цвет белым
+		SSD1306_Puts(item, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, цвет белым
+	}
+}
+
+
+
+void turnRelay1_Off(void)
+{
+	gpio_set_level(GPIO_RELAY1, 0);
+}
+
+void turnRelay1_On(void)
+{
+	gpio_set_level(GPIO_RELAY1, 1);
+}
 
 

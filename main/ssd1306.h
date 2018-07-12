@@ -29,6 +29,38 @@
 
 #include "fonts.h"
 
+
+
+
+
+
+
+
+/*
+ * GPIO status:
+ *	GPIO14: output (relay1)
+ *	GPIO12: output (relay2)
+ *	GPIO33:(clk - encoder) input
+ *	GPIO25:(dt - encoder) input
+ *	GPIO26:(sw - encoder) input
+ *
+*/
+#define GPIO_RELAY1    14
+#define GPIO_RELAY2    12
+#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<GPIO_RELAY1) | (1ULL<<GPIO_RELAY2))
+#define GPIO_ENC_CLK     33
+#define GPIO_ENC_DT		 25
+#define GPIO_ENC_SW		 26
+#define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_ENC_CLK) | (1ULL<<GPIO_ENC_DT) | (1ULL<<GPIO_ENC_SW)) 
+#define ESP_INTR_FLAG_DEFAULT 0
+
+
+
+
+
+
+
+
 /**
  * @brief  SSD1306 color enumeration
  */
@@ -234,7 +266,7 @@ void SSD1306_DrawCircle(int16_t x0, int16_t y0, int16_t r, SSD1306_COLOR_t c);
  */
 void SSD1306_DrawFilledCircle(int16_t x0, int16_t y0, int16_t r, SSD1306_COLOR_t c);
 
-
+void vDisplayMenuItem(char *item, uint8_t position, uint8_t selected);
 
 //void vDrawMenu(uint8_t menuitem, uint8_t state);
 void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume, int selectedLanguage, int selectedDifficulty, int selectedRelay1);
