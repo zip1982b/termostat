@@ -528,7 +528,7 @@ void vSetContrast(uint8_t contrast) {
 	//SSD1306_WRITECOMMAND(0x);  
 }
 
-void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume, int selectedLanguage, int selectedDifficulty, int selectedRelay1)
+void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, uint8_t contrast)
 {
 	char menuItem1[] = "Set relay";
 	char menuItem2[] = "Set temp";
@@ -548,10 +548,10 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		SSD1306_Puts("MAIN MENU", &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
 		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE);
 	
-	/*************** state 10 ******************************/
+	/*************** state 10 - Frame 1 ******************************/
 		if(menuitem == 1 && state == 10)
 		{
-			vDisplayMenuItem(menuItem1, 15, 1); //Contrast
+			vDisplayMenuItem(menuItem1, 15, 1); // Set relay
 			vDisplayMenuItem(menuItem2, 25, 0);
 			vDisplayMenuItem(menuItem3, 35, 0);
 			vDisplayMenuItem(menuItem4, 45, 0);
@@ -560,7 +560,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		else if(menuitem == 2 && state == 10)
 		{
 			vDisplayMenuItem(menuItem1, 15, 0);
-			vDisplayMenuItem(menuItem2, 25, 1); //Volume
+			vDisplayMenuItem(menuItem2, 25, 1); // Set temp
 			vDisplayMenuItem(menuItem3, 35, 0);
 			vDisplayMenuItem(menuItem4, 45, 0);
 			SSD1306_UpdateScreen();
@@ -569,7 +569,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		{
 			vDisplayMenuItem(menuItem1, 15, 0);
 			vDisplayMenuItem(menuItem2, 25, 0);
-			vDisplayMenuItem(menuItem3, 35, 1); //Language
+			vDisplayMenuItem(menuItem3, 35, 1); // Process view
 			vDisplayMenuItem(menuItem4, 45, 0);
 			SSD1306_UpdateScreen();
 		}   
@@ -578,13 +578,13 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 			vDisplayMenuItem(menuItem1, 15, 0);
 			vDisplayMenuItem(menuItem2, 25, 0);
 			vDisplayMenuItem(menuItem3, 35, 0);
-			vDisplayMenuItem(menuItem4, 45, 1); //Difficulty
+			vDisplayMenuItem(menuItem4, 45, 1); // Chip info
 			SSD1306_UpdateScreen();
 		}
-	/************ state 20 **********************************/
+	/************ state 20 - Frame 2 **********************************/
 		else if(menuitem == 2 && state == 20)
 		{
-			vDisplayMenuItem(menuItem2, 15, 1);
+			vDisplayMenuItem(menuItem2, 15, 1); // Set temp
 			vDisplayMenuItem(menuItem3, 25, 0);
 			vDisplayMenuItem(menuItem4, 35, 0);
 			vDisplayMenuItem(menuItem5, 45, 0);
@@ -593,7 +593,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		else if(menuitem == 3 && state == 20)
 		{
 			vDisplayMenuItem(menuItem2, 15, 0);
-			vDisplayMenuItem(menuItem3, 25, 1);
+			vDisplayMenuItem(menuItem3, 25, 1); // Process view
 			vDisplayMenuItem(menuItem4, 35, 0);
 			vDisplayMenuItem(menuItem5, 45, 0);
 			SSD1306_UpdateScreen();
@@ -602,7 +602,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		{
 			vDisplayMenuItem(menuItem2, 15, 0);
 			vDisplayMenuItem(menuItem3, 25, 0);
-			vDisplayMenuItem(menuItem4, 35, 1);
+			vDisplayMenuItem(menuItem4, 35, 1); // Chip info
 			vDisplayMenuItem(menuItem5, 45, 0);
 			SSD1306_UpdateScreen();
 		}
@@ -611,10 +611,10 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 			vDisplayMenuItem(menuItem2, 15, 0);
 			vDisplayMenuItem(menuItem3, 25, 0);
 			vDisplayMenuItem(menuItem4, 35, 0);
-			vDisplayMenuItem(menuItem5, 45, 1);
+			vDisplayMenuItem(menuItem5, 45, 1); // Network info
 			SSD1306_UpdateScreen();
 		}
-	/************* state 30 *********************************/
+	/************* state 30 - Frame 3 *********************************/
 		else if(menuitem == 3 && state == 30)
 		{
 			vDisplayMenuItem(menuItem3, 15, 1);
@@ -647,7 +647,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 			vDisplayMenuItem(menuItem6, 45, 1);
 			SSD1306_UpdateScreen();
 		}
-		/************* state 40 *********************************/
+		/************* state 40 - Frame 4 *********************************/
 		else if(menuitem == 4 && state == 40)
 		{
 			vDisplayMenuItem(menuItem4, 15, 1);
@@ -680,7 +680,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 			vDisplayMenuItem(menuItem7, 45, 1);
 			SSD1306_UpdateScreen();
 		}
-		/************* state 50 *********************************/
+		/************* state 50 - Frame 5 *********************************/
 		else if(menuitem == 5 && state == 50)
 		{
 			vDisplayMenuItem(menuItem5, 15, 1);
@@ -718,7 +718,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 	/***************** Page 1 end ***************************/
 	
 	/*****************  Page 2 ******************************/
-	else if(state < 10 && menuitem == 1){
+	else if(state == 1 && menuitem == 1){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem1, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
@@ -726,14 +726,12 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		SSD1306_GotoXY(5, 15);
 		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 35);
-		char v[24];
-		itoa(contrast, v, 10);
-		SSD1306_Puts(v, &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts(relay[selectRelay], &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 	
 	
-	else if(state < 10 && menuitem == 2){
+	else if(state == 2 && menuitem == 2){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem2, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
@@ -741,9 +739,9 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		SSD1306_GotoXY(5, 15);
 		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 35);
-		char v[24];
-		itoa(volume, v, 10);
-		SSD1306_Puts(v, &Font_11x18, SSD1306_COLOR_WHITE);
+		char t[24];
+		itoa(temp, t, 10);
+		SSD1306_Puts(t, &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 	
@@ -756,7 +754,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume
 		SSD1306_GotoXY(5, 15);
 		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 35);
-		SSD1306_Puts(language[selectedLanguage], &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts(, &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 	

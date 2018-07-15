@@ -120,6 +120,7 @@ void vDisplay(void *pvParameter)
 	uint8_t frame = 1;
 	uint8_t menuitem = 1; // default item - Contrast
 	
+	int selectRelay = 0;
 	uint8_t contrast = 100; // default contrast value
 	uint8_t temp = 22; // default temp value
 
@@ -138,7 +139,7 @@ void vDisplay(void *pvParameter)
 0		
 		if(change)
 		{
-			vDrawMenu(menuitem, state, contrast, temp);
+			vDrawMenu(menuitem, state, selectRelay, contrast, temp);
 			change = 0;
 		}
 	/***** Read Encoder ***********************/
@@ -159,31 +160,31 @@ void vDisplay(void *pvParameter)
 					break;
 			}
 		}
-		//else
+		else
 			printf("[vDisplay]xStatusReceive = %d\n", xStatusReceive);
 			//printf("[vDisplay]xStatusReceive not pdPass\n");
 	/***** End Read Encoder ***********************/	
 		
 		
 		switch(state){
-			/*** Frame 1 ************************************************/
+			/*** Frame 1 - State 10 ************************************************/
 			case 10:
 				printf("State = 10\n");
 				frame = 1;
 				if(down_cw) { menuitem++;}
 				else if(up_ccw) { menuitem--; }
 				
-				// go to Contrast
-				//else if(press_button && menuitem == 1) { state = 1; }
+				// go to Set relay
+				else if(press_button && menuitem == 1) { state = 1; }
 				
-				// go to Volume
-				//else if(press_button && menuitem == 2) { state = 2; }
+				// go to Set temp
+				else if(press_button && menuitem == 2) { state = 2; }
 				
-				// go to Language
-				//else if(press_button && menuitem == 3) { state = 3; }
+				// go to Process view
+				else if(press_button && menuitem == 3) { state = 3; }
 				
-				// go to Difficulty
-				//else if(press_button && menuitem == 4) { state = 4; }
+				// go to Chip info
+				else if(press_button && menuitem == 4) { state = 4; }
 				
 				
 				if(menuitem == 0) { menuitem = 1; }
@@ -196,23 +197,24 @@ void vDisplay(void *pvParameter)
 				break;
 			/*********************************************************/
 			
-			/*** Frame 2 *********************************************/
+			/*** Frame 2 - State 20 *********************************************/
 			case 20:
 				printf("State = 20\n");
+				frame = 2;
 				if(down_cw) { menuitem++; }
 				else if(up_ccw) { menuitem--; }
 				
-				// go to Volume
-				//else if(press_button && menuitem == 2) { state = 2; }
+				// go to Set temp
+				else if(press_button && menuitem == 2) { state = 2; }
 				
-				// go to Language
-				//else if(press_button && menuitem == 3) { state = 3; }
+				// go to Process view
+				else if(press_button && menuitem == 3) { state = 3; }
 				
-				// go to Difficulty
-				//else if(press_button && menuitem == 4) { state = 4; }
+				// go to Chip info
+				else if(press_button && menuitem == 4) { state = 4; }
 				
-				// go to Relay
-				//else if(press_button && menuitem == 5) { state = 5; }
+				// go to Network info
+				else if(press_button && menuitem == 5) { state = 5; }
 				
 				if(menuitem > 5){ 
 					state = 30;
@@ -228,17 +230,21 @@ void vDisplay(void *pvParameter)
 			/*** Frame 3 *********************************************/
 			case 30:
 				printf("State = 30\n");
+				frame = 3;
 				if(up_ccw) { menuitem--; }
 				else if(down_cw) { menuitem++; }
 				
-				// go to Language
-				//else if(press_button && menuitem == 3) { state = 3; }
+				// go to Process view
+				else if(press_button && menuitem == 3) { state = 3; }
 				
-				// go to Difficulty
-				//else if(press_button && menuitem == 4) { state = 4; }
+				// go to Chip info
+				else if(press_button && menuitem == 4) { state = 4; }
 				
-				// go to Relay
-				//else if(press_button && menuitem == 5) { state = 5; }
+				// go to Network info
+				else if(press_button && menuitem == 5) { state = 5; }
+				
+				// go to Contrast
+				else if(press_button && menuitem == 6) { state = 6; }
 				
 				if(menuitem < 3) { 
 					state = 20;
@@ -248,24 +254,13 @@ void vDisplay(void *pvParameter)
 					state = 40;
 					frame = 4;
 				}
-				
-				/*
-				if(press_button && menuitem == 6) { 
-					contrast = 100;
-					volume = 50;
-					selectedLanguage = 0;
-					selectedDifficulty = 0;
-					vSetContrast(contrast);
-					selectedRelay1 = 0;
-					turnRelay1_Off();
-				}
-				*/
 				break;
 			/********************************************************/
 			
 			/*** Frame 4 *********************************************/
 			case 40:
 				printf("State = 40\n");
+				frame = 4;
 				if(up_ccw) { menuitem--; }
 				else if(down_cw) { menuitem++; }
 				
@@ -303,6 +298,7 @@ void vDisplay(void *pvParameter)
 			/*** Frame 5 *********************************************/
 			case 50:
 				printf("State = 50\n");
+				frame = 5;
 				if(up_ccw) { menuitem--; }
 				else if(down_cw) { menuitem++; }
 				else if(menuitem == 9) { menuitem = 8; }
@@ -334,9 +330,76 @@ void vDisplay(void *pvParameter)
 				break;
 			/********************************************************/
 			
-			/*** Contrast ***/
+			/*** Set relay ***/
 			case 1:
-				//printf("State = 1\n");
+				printf("State = 1\n");
+				if(down_cw){ 
+					selectRelay++;
+					if(selectRelay >= 2) { selectRelay = 0; }
+				}
+				else if(up_ccw){ 
+					selectRelay--;
+					if(selectRelay <= -1) { selectRelay = 1; }
+				}
+				else if(press_button && frame == 1) { state = 10; }
+				break;
+				
+			/*** Set temp ***/
+			case 2:
+				printf("State = 2\n");
+				if(down_cw){ 
+					temp++;
+					if(temp >= 25) { temp = 25; }
+				}
+				else if(up_ccw){ 
+					temp--;
+					if(temp <= 20) { temp = 20; }
+				}
+				else if(press_button && frame == 1) { state = 10; } // go to Frame 1
+				else if(press_button && frame == 2) { state = 20; } // go to Frame 2
+				break;
+			
+			/*** Process view ***/
+			case 3:
+				printf("State = 3\n");
+				if(down_cw){ selectedLanguage++; }
+				else if(up_ccw){ selectedLanguage--; }
+				else if(press_button && frame == 1){ state = 10; }
+				else if(press_button && frame == 2){ state = 20; }
+				else if(press_button && frame == 3){ state = 30; }
+				
+				if(selectedLanguage == -1) { selectedLanguage = 2; }
+				else if(selectedLanguage == 3) { selectedLanguage = 0; }
+				break;
+			
+			/*** Chip info ***/
+			case 4:
+				printf("State = 4\n");
+				if(down_cw){ selectedDifficulty++; }
+				else if(up_ccw){ selectedDifficulty--; }
+				else if(press_button && frame == 1){ state = 10; }
+				else if(press_button && frame == 2){ state = 20; }
+				else if(press_button && frame == 3){ state = 30; }
+				
+				if(selectedDifficulty == -1) { selectedDifficulty = 1;}
+				else if(selectedDifficulty == 2) { selectedDifficulty = 0;}
+				break;
+			
+			/*** Network info ***/
+			case 5:
+				printf("State = 5\n");
+				if(down_cw){ selectedRelay1++; }
+				else if(up_ccw){ selectedRelay1--; }
+				else if(press_button && frame == 2){ state = 20; }
+				else if(press_button && frame == 3){ state = 30; }
+				
+				if(selectedRelay1 >= 2) { selectedRelay1 = 0; }
+				else if(selectedRelay1 <= -1) { selectedRelay1 = 1; }
+				break;
+				
+			/*** Contrast ***/
+			case 6:
+				printf("State = 6\n");
 				if(down_cw){
 					contrast++;
 					vSetContrast(contrast);
@@ -348,51 +411,32 @@ void vDisplay(void *pvParameter)
 				else if(press_button && frame == 1) { state = 10; }
 				break;
 				
-			/*** Volume ***/
-			case 2:
-				//printf("State = 2\n");
-				if(down_cw){ volume++; }
-				else if(up_ccw){ volume--; }
-				else if(press_button && frame == 1) { state = 10; } // go to Frame 1
-				else if(press_button && frame == 2) { state = 20; } // go to Frame 2
+			/*** Display sleep ***/
+			case 7:
+				printf("State = 7\n");
+				if(down_cw){
+					contrast++;
+					vSetContrast(contrast);
+				}
+				else if(up_ccw){
+					contrast--;
+					vSetContrast(contrast);
+				}
+				else if(press_button && frame == 1) { state = 10; }
 				break;
 			
-			/*** Language ***/
-			case 3:
-				//printf("State = 3\n");
-				if(down_cw){ selectedLanguage++; }
-				else if(up_ccw){ selectedLanguage--; }
-				else if(press_button && frame == 1){ state = 10; }
-				else if(press_button && frame == 2){ state = 20; }
-				else if(press_button && frame == 3){ state = 30; }
-				
-				if(selectedLanguage == -1) { selectedLanguage = 2; }
-				else if(selectedLanguage == 3) { selectedLanguage = 0; }
-				break;
-			
-			/*** Difficulty ***/
-			case 4:
-				//printf("State = 4\n");
-				if(down_cw){ selectedDifficulty++; }
-				else if(up_ccw){ selectedDifficulty--; }
-				else if(press_button && frame == 1){ state = 10; }
-				else if(press_button && frame == 2){ state = 20; }
-				else if(press_button && frame == 3){ state = 30; }
-				
-				if(selectedDifficulty == -1) { selectedDifficulty = 1;}
-				else if(selectedDifficulty == 2) { selectedDifficulty = 0;}
-				break;
-			
-			/*** Relay ***/
-			case 5:
-				//printf("State = 5\n");
-				if(down_cw){ selectedRelay1++; }
-				else if(up_ccw){ selectedRelay1--; }
-				else if(press_button && frame == 2){ state = 20; }
-				else if(press_button && frame == 3){ state = 30; }
-				
-				if(selectedRelay1 >= 2) { selectedRelay1 = 0; }
-				else if(selectedRelay1 <= -1) { selectedRelay1 = 1; }
+			/*** Reset CPU ***/
+			case 8:
+				printf("State = 8\n");
+				if(down_cw){
+					contrast++;
+					vSetContrast(contrast);
+				}
+				else if(up_ccw){
+					contrast--;
+					vSetContrast(contrast);
+				}
+				else if(press_button && frame == 1) { state = 10; }
 				break;
 		}
     }
