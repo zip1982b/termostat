@@ -164,7 +164,10 @@ void Del_str(char *s) {
 }
 
 
-
+void DisplayMode(uint8_t mode){
+	if(mode == 0xAE){ SSD1306_WRITECOMMAND(0xAE); }
+	else if(mode == 0xAF) { SSD1306_WRITECOMMAND(0xAF); }
+}
  
 
 
@@ -718,7 +721,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 	/***************** Page 1 end ***************************/
 	
 	/*****************  Page 2 ******************************/
-	else if(state == 1 && menuitem == 1){
+	else if(state == 1){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem1, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
@@ -731,7 +734,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 	}
 	
 	
-	else if(state == 2 && menuitem == 2){
+	else if(state == 2){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem2, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
@@ -746,46 +749,60 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 	}
 	
 	
-	else if(state < 10 && menuitem == 3){
+	else if(state == 3){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem3, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
 		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
 		SSD1306_GotoXY(5, 15);
-		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts("Relay ON", &Font_7x10, SSD1306_COLOR_WHITE);
+		//SSD1306_GotoXY(5, 35);
+		//SSD1306_Puts(, &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 35);
-		SSD1306_Puts(, &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts("t = 35 C", &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 	
 	
-	else if(state < 10 && menuitem == 4){
+	else if(state == 4){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem4, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
 		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
 		SSD1306_GotoXY(5, 15);
-		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
-		SSD1306_GotoXY(5, 35);
-		SSD1306_Puts(difficulty[selectedDifficulty], &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts("ESP32 ", &Font_7x10, SSD1306_COLOR_WHITE);
+		//SSD1306_GotoXY(5, 35);
+		char core[5];
+		//itoa("2", core, 10);
+		SSD1306_Puts("2", &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 	
 	
-	else if(state < 10 && menuitem == 5){
+	else if(state == 5){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem5, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
 		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
 		SSD1306_GotoXY(5, 15);
+		SSD1306_Puts("IP address: ", &Font_7x10, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(5, 35);
+		SSD1306_Puts("192.168.1.12", &Font_7x10, SSD1306_COLOR_WHITE);
+		SSD1306_UpdateScreen();
+	}
+	
+	else if(state == 6){
+		SSD1306_Fill(SSD1306_COLOR_BLACK);
+		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
+		SSD1306_Puts(menuItem6, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
+		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
+		SSD1306_GotoXY(5, 15);
 		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 35);
-		SSD1306_Puts(Relay1[selectedRelay1], &Font_11x18, SSD1306_COLOR_WHITE);
+		char cont[24];
+		itoa(contrast, cont, 10);
+		SSD1306_Puts(cont, &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
-		if(selectedRelay1 == 1)
-			turnRelay1_On();
-		else if(selectedRelay1 == 0)
-			turnRelay1_Off();
 	}
 }
 

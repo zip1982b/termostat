@@ -113,9 +113,11 @@ static void ENC(void* arg)
 
 void vDisplay(void *pvParameter)
 {
+	volatile esp_chip_info_t *pxTaskParam;
+	//pxTaskParam = (esp_chip_info_t*)pvParameter;
 	portBASE_TYPE xStatusReceive;
 	enum action rotate;
-	
+	//printf("param = %d", pxTaskParam.cores);
 	uint8_t state = 10; // default state
 	uint8_t frame = 1;
 	uint8_t menuitem = 1; // default item - Contrast
@@ -135,11 +137,10 @@ void vDisplay(void *pvParameter)
     while(1) {
 		down_cw = 0;
 		up_ccw = 0;
-		press_button = 0;
-0		
+		press_button = 0;	
 		if(change)
 		{
-			vDrawMenu(menuitem, state, selectRelay, contrast, temp);
+			vDrawMenu(menuitem, state, selectRelay, temp, contrast);
 			change = 0;
 		}
 	/***** Read Encoder ***********************/
@@ -261,17 +262,22 @@ void vDisplay(void *pvParameter)
 			case 40:
 				printf("State = 40\n");
 				frame = 4;
+				
+				
 				if(up_ccw) { menuitem--; }
 				else if(down_cw) { menuitem++; }
 				
-				// go to Language
-				//else if(press_button && menuitem == 3) { state = 3; }
+				// go to Chip info
+				else if(press_button && menuitem == 4) { state = 4; }
 				
-				// go to Difficulty
-				//else if(press_button && menuitem == 4) { state = 4; }
+				// go to Network info
+				else if(press_button && menuitem == 5) { state = 5; }
 				
-				// go to Relay
-				//else if(press_button && menuitem == 5) { state = 5; }
+				// go to Contrast
+				else if(press_button && menuitem == 6) { state = 6; }
+				
+				// go to Display sleep
+				else if(press_button && menuitem == 7) { state = 7; }
 				
 				if(menuitem < 4) { 
 					state = 30;
@@ -281,17 +287,6 @@ void vDisplay(void *pvParameter)
 					state = 50;
 					frame = 5;
 				}
-				/*
-				if(press_button && menuitem == 6) { 
-					contrast = 100;
-					volume = 50;
-					selectedLanguage = 0;
-					selectedDifficulty = 0;
-					vSetContrast(contrast);
-					selectedRelay1 = 0;
-					turnRelay1_Off();
-				} */
-				
 				break;
 			/********************************************************/
 			
@@ -303,29 +298,18 @@ void vDisplay(void *pvParameter)
 				else if(down_cw) { menuitem++; }
 				else if(menuitem == 9) { menuitem = 8; }
 				// go to Language
-				//else if(press_button && menuitem == 3) { state = 3; }
+				else if(press_button && menuitem == 3) { state = 3; }
 				
 				// go to Difficulty
-				//else if(press_button && menuitem == 4) { state = 4; }
+				else if(press_button && menuitem == 4) { state = 4; }
 				
 				// go to Relay
-				//else if(press_button && menuitem == 5) { state = 5; }
+				else if(press_button && menuitem == 5) { state = 5; }
 				
 				if(menuitem < 5) { 
 					state = 40;
 					frame = 4;
 				}
-				
-				/*
-				if(press_button && menuitem == 6) { 
-					contrast = 100;
-					volume = 50;
-					selectedLanguage = 0;
-					selectedDifficulty = 0;
-					vSetContrast(contrast);
-					selectedRelay1 = 0;
-					turnRelay1_Off();
-				} */
 				
 				break;
 			/********************************************************/
@@ -362,39 +346,27 @@ void vDisplay(void *pvParameter)
 			/*** Process view ***/
 			case 3:
 				printf("State = 3\n");
-				if(down_cw){ selectedLanguage++; }
-				else if(up_ccw){ selectedLanguage--; }
-				else if(press_button && frame == 1){ state = 10; }
+				if(press_button && frame == 1){ state = 10; }
 				else if(press_button && frame == 2){ state = 20; }
 				else if(press_button && frame == 3){ state = 30; }
-				
-				if(selectedLanguage == -1) { selectedLanguage = 2; }
-				else if(selectedLanguage == 3) { selectedLanguage = 0; }
 				break;
 			
 			/*** Chip info ***/
 			case 4:
 				printf("State = 4\n");
-				if(down_cw){ selectedDifficulty++; }
-				else if(up_ccw){ selectedDifficulty--; }
-				else if(press_button && frame == 1){ state = 10; }
+				if(press_button && frame == 1){ state = 10; }
 				else if(press_button && frame == 2){ state = 20; }
 				else if(press_button && frame == 3){ state = 30; }
-				
-				if(selectedDifficulty == -1) { selectedDifficulty = 1;}
-				else if(selectedDifficulty == 2) { selectedDifficulty = 0;}
+				else if(press_button && frame == 4){ state = 40; }
 				break;
 			
 			/*** Network info ***/
 			case 5:
 				printf("State = 5\n");
-				if(down_cw){ selectedRelay1++; }
-				else if(up_ccw){ selectedRelay1--; }
-				else if(press_button && frame == 2){ state = 20; }
+				if(press_button && frame == 2){ state = 20; }
 				else if(press_button && frame == 3){ state = 30; }
-				
-				if(selectedRelay1 >= 2) { selectedRelay1 = 0; }
-				else if(selectedRelay1 <= -1) { selectedRelay1 = 1; }
+				else if(press_button && frame == 4){ state = 40; }
+				else if(press_button && frame == 5){ state = 50; }
 				break;
 				
 			/*** Contrast ***/
@@ -408,35 +380,31 @@ void vDisplay(void *pvParameter)
 					contrast--;
 					vSetContrast(contrast);
 				}
-				else if(press_button && frame == 1) { state = 10; }
+				else if(press_button && frame == 3) { state = 30; }
+				else if(press_button && frame == 4) { state = 40; }
+				else if(press_button && frame == 5) { state = 50; }
 				break;
 				
 			/*** Display sleep ***/
 			case 7:
 				printf("State = 7\n");
-				if(down_cw){
-					contrast++;
-					vSetContrast(contrast);
+				DisplayMode(OLED_CMD_DISPLAY_OFF);
+				if(press_button && frame == 4) {
+					state = 40;
+					DisplayMode(OLED_CMD_DISPLAY_ON);
 				}
-				else if(up_ccw){
-					contrast--;
-					vSetContrast(contrast);
+				else if(press_button && frame == 5) { 
+					state = 50;
+					DisplayMode(OLED_CMD_DISPLAY_ON);
 				}
-				else if(press_button && frame == 1) { state = 10; }
 				break;
 			
 			/*** Reset CPU ***/
 			case 8:
 				printf("State = 8\n");
-				if(down_cw){
-					contrast++;
-					vSetContrast(contrast);
-				}
-				else if(up_ccw){
-					contrast--;
-					vSetContrast(contrast);
-				}
-				else if(press_button && frame == 1) { state = 10; }
+				printf("Restarting now.\n");
+				fflush(stdout);
+				esp_restart();
 				break;
 		}
     }
@@ -534,7 +502,7 @@ void app_main()
     gpio_isr_handler_add(GPIO_ENC_SW, gpio_isr_handler, (void*) GPIO_ENC_SW);
 	
 	
-	xStatusOLED = xTaskCreate(vDisplay, "vDisplay", 1024 * 2, NULL, 10, &xDisplay_Handle);
+	xStatusOLED = xTaskCreate(vDisplay, "vDisplay", 1024 * 2, (void*)&chip_info, 10, &xDisplay_Handle);
 		if(xStatusOLED == pdPASS)
 			printf("Task vDisplay is created!\n");
 		else

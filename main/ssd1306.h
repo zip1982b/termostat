@@ -268,8 +268,8 @@ void SSD1306_DrawFilledCircle(int16_t x0, int16_t y0, int16_t r, SSD1306_COLOR_t
 
 void vDisplayMenuItem(char *item, uint8_t position, uint8_t selected);
 
-//void vDrawMenu(uint8_t menuitem, uint8_t state);
-void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, uint8_t volume, int selectedLanguage, int selectedDifficulty, int selectedRelay1);
+
+void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, uint8_t contrast);
 
 void vSetContrast(uint8_t contrast);
 
@@ -278,7 +278,7 @@ void turnRelay1_Off(void);
 
 void turnRelay1_On(void);
 
-
+void DisplayMode(uint8_t mode);
 //void resetDefaults(void);
 
 //void vDisplayMenuItem(char *item, uint8_t position, uint8_t selected);
