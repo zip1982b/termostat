@@ -99,7 +99,7 @@ static void ENC(void* arg)
 			rotate = bp;
 			//printf("[ENC]rotate = %d\n", rotate);
 			printf("[ENC]Button is pressed\n");
-			vTaskDelay(500 / portTICK_RATE_MS);
+			vTaskDelay(800 / portTICK_RATE_MS);
 			xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
 			gpio_set_intr_type(GPIO_ENC_SW, GPIO_INTR_NEGEDGE);//enable
 			
@@ -133,7 +133,7 @@ void vDisplay(void *pvParameter)
 	uint8_t down_cw;
 	uint8_t up_ccw;
 	uint8_t press_button;
-	
+	printf("state = 10\n");
     while(1) {
 		down_cw = 0;
 		up_ccw = 0;
@@ -144,7 +144,7 @@ void vDisplay(void *pvParameter)
 			change = 0;
 		}
 	/***** Read Encoder ***********************/
-		xStatusReceive = xQueueReceive(ENC_queue, &rotate, portMAX_DELAY); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
+		xStatusReceive = xQueueReceive(ENC_queue, &rotate, 300/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
 		if(xStatusReceive == pdPASS)
 		{
 			change = 1;
@@ -161,8 +161,8 @@ void vDisplay(void *pvParameter)
 					break;
 			}
 		}
-		else
-			printf("[vDisplay]xStatusReceive = %d\n", xStatusReceive);
+		//else
+			//printf("[vDisplay]xStatusReceive = %d\n", xStatusReceive);
 			//printf("[vDisplay]xStatusReceive not pdPass\n");
 	/***** End Read Encoder ***********************/	
 		
@@ -170,28 +170,41 @@ void vDisplay(void *pvParameter)
 		switch(state){
 			/*** Frame 1 - State 10 ************************************************/
 			case 10:
-				printf("State = 10\n");
+				//printf("state = 10\n");
 				frame = 1;
 				if(down_cw) { menuitem++;}
 				else if(up_ccw) { menuitem--; }
 				
 				// go to Set relay
-				else if(press_button && menuitem == 1) { state = 1; }
+				else if(press_button && menuitem == 1) { 
+					state = 1;
+					printf("state = 1\n");
+				}
 				
 				// go to Set temp
-				else if(press_button && menuitem == 2) { state = 2; }
+				else if(press_button && menuitem == 2) { 
+					state = 2;
+					printf("State = 2\n");
+				}
 				
 				// go to Process view
-				else if(press_button && menuitem == 3) { state = 3; }
+				else if(press_button && menuitem == 3) { 
+					state = 3;
+					printf("State = 3\n");
+				}
 				
 				// go to Chip info
-				else if(press_button && menuitem == 4) { state = 4; }
+				else if(press_button && menuitem == 4) { 
+					state = 4;
+					printf("State = 4\n");
+				}
 				
 				
 				if(menuitem == 0) { menuitem = 1; }
 				
 				if(menuitem > 4){
 					state = 20;
+					printf("State = 20\n");
 					frame = 2;
 				}
 
@@ -200,29 +213,43 @@ void vDisplay(void *pvParameter)
 			
 			/*** Frame 2 - State 20 *********************************************/
 			case 20:
-				printf("State = 20\n");
+				//printf("State = 20\n");
 				frame = 2;
 				if(down_cw) { menuitem++; }
 				else if(up_ccw) { menuitem--; }
 				
 				// go to Set temp
-				else if(press_button && menuitem == 2) { state = 2; }
+				else if(press_button && menuitem == 2) { 
+					state = 2;
+					printf("State = 2\n");
+				}
 				
 				// go to Process view
-				else if(press_button && menuitem == 3) { state = 3; }
+				else if(press_button && menuitem == 3) { 
+					state = 3;
+					printf("State = 3\n");
+				}
 				
 				// go to Chip info
-				else if(press_button && menuitem == 4) { state = 4; }
+				else if(press_button && menuitem == 4) { 
+					state = 4;
+					printf("State = 4\n");
+				}
 				
 				// go to Network info
-				else if(press_button && menuitem == 5) { state = 5; }
+				else if(press_button && menuitem == 5) { 
+					state = 5;
+					printf("State = 5\n");
+				}
 				
 				if(menuitem > 5){ 
 					state = 30;
+					printf("State = 30\n");
 					frame = 3;
 				}
 				else if(menuitem < 2) { 
 					state = 10;
+					printf("State = 10\n");
 					frame = 1;
 				}
 				break;
@@ -230,29 +257,43 @@ void vDisplay(void *pvParameter)
 			
 			/*** Frame 3 *********************************************/
 			case 30:
-				printf("State = 30\n");
+				//printf("State = 30\n");
 				frame = 3;
 				if(up_ccw) { menuitem--; }
 				else if(down_cw) { menuitem++; }
 				
 				// go to Process view
-				else if(press_button && menuitem == 3) { state = 3; }
+				else if(press_button && menuitem == 3) {
+					state = 3;
+					printf("State = 3\n");
+				}
 				
 				// go to Chip info
-				else if(press_button && menuitem == 4) { state = 4; }
+				else if(press_button && menuitem == 4) {
+					state = 4;
+					printf("State = 4\n");
+				}
 				
 				// go to Network info
-				else if(press_button && menuitem == 5) { state = 5; }
+				else if(press_button && menuitem == 5) {
+					state = 5;
+					printf("State = 5\n");
+				}
 				
 				// go to Contrast
-				else if(press_button && menuitem == 6) { state = 6; }
+				else if(press_button && menuitem == 6) {
+					state = 6;
+					printf("State = 6\n");
+				}
 				
 				if(menuitem < 3) { 
 					state = 20;
+					printf("State = 20\n");
 					frame = 2;
 				}
 				else if(menuitem > 6) {
 					state = 40;
+					printf("State = 40\n");
 					frame = 4;
 				}
 				break;
@@ -260,7 +301,7 @@ void vDisplay(void *pvParameter)
 			
 			/*** Frame 4 *********************************************/
 			case 40:
-				printf("State = 40\n");
+				//printf("State = 40\n");
 				frame = 4;
 				
 				
@@ -268,23 +309,37 @@ void vDisplay(void *pvParameter)
 				else if(down_cw) { menuitem++; }
 				
 				// go to Chip info
-				else if(press_button && menuitem == 4) { state = 4; }
+				else if(press_button && menuitem == 4) {
+					state = 4;
+					printf("State = 4\n");
+				}
 				
 				// go to Network info
-				else if(press_button && menuitem == 5) { state = 5; }
+				else if(press_button && menuitem == 5) {
+					state = 5;
+					printf("State = 4\n");
+				}
 				
 				// go to Contrast
-				else if(press_button && menuitem == 6) { state = 6; }
+				else if(press_button && menuitem == 6) {
+					state = 6;
+					printf("State = 6\n");
+				}
 				
 				// go to Display sleep
-				else if(press_button && menuitem == 7) { state = 7; }
+				else if(press_button && menuitem == 7) {
+					state = 7;
+					printf("State = 7\n");
+				}
 				
 				if(menuitem < 4) { 
 					state = 30;
+					printf("State = 30\n");
 					frame = 3;
 				}
 				else if(menuitem > 7) {
 					state = 50;
+					printf("State = 50\n");
 					frame = 5;
 				}
 				break;
@@ -292,22 +347,38 @@ void vDisplay(void *pvParameter)
 			
 			/*** Frame 5 *********************************************/
 			case 50:
-				printf("State = 50\n");
+				//printf("State = 50\n");
 				frame = 5;
 				if(up_ccw) { menuitem--; }
 				else if(down_cw) { menuitem++; }
 				else if(menuitem == 9) { menuitem = 8; }
-				// go to Language
-				else if(press_button && menuitem == 3) { state = 3; }
+				// go to Network info
+				else if(press_button && menuitem == 5) {
+					state = 5;
+					printf("State = 5\n");
+				}
 				
-				// go to Difficulty
-				else if(press_button && menuitem == 4) { state = 4; }
+				// go to Contrast
+				else if(press_button && menuitem == 6) {
+					state = 6;
+					printf("State = 6\n");					
+				}
 				
-				// go to Relay
-				else if(press_button && menuitem == 5) { state = 5; }
+				// go to Display sleep
+				else if(press_button && menuitem == 7) {
+					state = 7;
+					printf("State = 7\n");
+				}
+				
+				// go to Reset CPU
+				else if(press_button && menuitem == 8) {
+					state = 8;
+					printf("State = 8\n");
+				}
 				
 				if(menuitem < 5) { 
 					state = 40;
+					printf("State = 40\n");
 					frame = 4;
 				}
 				
@@ -316,7 +387,6 @@ void vDisplay(void *pvParameter)
 			
 			/*** Set relay ***/
 			case 1:
-				printf("State = 1\n");
 				if(down_cw){ 
 					selectRelay++;
 					if(selectRelay >= 2) { selectRelay = 0; }
@@ -325,12 +395,15 @@ void vDisplay(void *pvParameter)
 					selectRelay--;
 					if(selectRelay <= -1) { selectRelay = 1; }
 				}
-				else if(press_button && frame == 1) { state = 10; }
+				else if(press_button && frame == 1) {
+					state = 10;
+					printf("State = 10\n");
+				}
 				break;
 				
 			/*** Set temp ***/
 			case 2:
-				printf("State = 2\n");
+				//printf("State = 2\n");
 				if(down_cw){ 
 					temp++;
 					if(temp >= 25) { temp = 25; }
@@ -339,39 +412,75 @@ void vDisplay(void *pvParameter)
 					temp--;
 					if(temp <= 20) { temp = 20; }
 				}
-				else if(press_button && frame == 1) { state = 10; } // go to Frame 1
-				else if(press_button && frame == 2) { state = 20; } // go to Frame 2
+				else if(press_button && frame == 1) {
+					state = 10;							// go to Frame 1
+					printf("state = 10\n");
+				} 
+				else if(press_button && frame == 2) {
+					state = 20;							// go to Frame 2
+					printf("state = 20\n");
+				} 
 				break;
 			
 			/*** Process view ***/
 			case 3:
-				printf("State = 3\n");
+				//printf("State = 3\n");
 				if(press_button && frame == 1){ state = 10; }
-				else if(press_button && frame == 2){ state = 20; }
-				else if(press_button && frame == 3){ state = 30; }
+				else if(press_button && frame == 2){
+					state = 20;
+					printf("state = 20\n");
+				}
+				else if(press_button && frame == 3){
+					state = 30;
+					printf("state = 30\n");
+				}
 				break;
 			
 			/*** Chip info ***/
 			case 4:
-				printf("State = 4\n");
-				if(press_button && frame == 1){ state = 10; }
-				else if(press_button && frame == 2){ state = 20; }
-				else if(press_button && frame == 3){ state = 30; }
-				else if(press_button && frame == 4){ state = 40; }
+				//printf("State = 4\n");
+				if(press_button && frame == 1){
+					state = 10;
+					printf("state = 10\n");
+				}
+				else if(press_button && frame == 2){
+					state = 20;
+					printf("state = 20\n");
+				}
+				else if(press_button && frame == 3){
+					state = 30;
+					printf("state = 30\n");
+				}
+				else if(press_button && frame == 4){
+					state = 40;
+					printf("state = 40\n");
+				}
 				break;
 			
 			/*** Network info ***/
 			case 5:
-				printf("State = 5\n");
-				if(press_button && frame == 2){ state = 20; }
-				else if(press_button && frame == 3){ state = 30; }
-				else if(press_button && frame == 4){ state = 40; }
-				else if(press_button && frame == 5){ state = 50; }
+				//printf("State = 5\n");
+				if(press_button && frame == 2){
+					state = 20;
+					printf("state = 20\n");
+				}
+				else if(press_button && frame == 3){
+					state = 30;
+					printf("state = 30\n");
+				}
+				else if(press_button && frame == 4){
+					state = 40;
+					printf("state = 40\n");
+				}
+				else if(press_button && frame == 5){
+					state = 50;
+					printf("state = 50\n");
+				}
 				break;
 				
 			/*** Contrast ***/
 			case 6:
-				printf("State = 6\n");
+				//printf("State = 6\n");
 				if(down_cw){
 					contrast++;
 					vSetContrast(contrast);
@@ -380,28 +489,39 @@ void vDisplay(void *pvParameter)
 					contrast--;
 					vSetContrast(contrast);
 				}
-				else if(press_button && frame == 3) { state = 30; }
-				else if(press_button && frame == 4) { state = 40; }
-				else if(press_button && frame == 5) { state = 50; }
+				else if(press_button && frame == 3) {
+					state = 30;
+					printf("state = 30\n");
+				}
+				else if(press_button && frame == 4) {
+					state = 40;
+					printf("state = 40\n");
+				}
+				else if(press_button && frame == 5) {
+					state = 50;
+					printf("state = 50\n");
+				}
 				break;
 				
 			/*** Display sleep ***/
 			case 7:
-				printf("State = 7\n");
+				//printf("State = 7\n");
 				DisplayMode(OLED_CMD_DISPLAY_OFF);
 				if(press_button && frame == 4) {
 					state = 40;
+					printf("state = 40\n");
 					DisplayMode(OLED_CMD_DISPLAY_ON);
 				}
 				else if(press_button && frame == 5) { 
 					state = 50;
+					printf("state = 50\n");
 					DisplayMode(OLED_CMD_DISPLAY_ON);
 				}
 				break;
 			
 			/*** Reset CPU ***/
 			case 8:
-				printf("State = 8\n");
+				//printf("State = 8\n");
 				printf("Restarting now.\n");
 				fflush(stdout);
 				esp_restart();
@@ -410,18 +530,6 @@ void vDisplay(void *pvParameter)
     }
 	vTaskDelete(NULL);
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

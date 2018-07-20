@@ -544,7 +544,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 	
 	char *relay[2] = { "Relay1", "Relay2" };
 	
-	if(state > 5)
+	if(state > 6)
 	{
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
@@ -721,6 +721,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 	/***************** Page 1 end ***************************/
 	
 	/*****************  Page 2 ******************************/
+	/*** set relay view ***/
 	else if(state == 1){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
@@ -733,7 +734,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 		SSD1306_UpdateScreen();
 	}
 	
-	
+	/*** set temp view ***/
 	else if(state == 2){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
@@ -748,7 +749,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 		SSD1306_UpdateScreen();
 	}
 	
-	
+	/*** Process view ***/
 	else if(state == 3){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
@@ -763,7 +764,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 		SSD1306_UpdateScreen();
 	}
 	
-	
+	/*** chip info view ***/
 	else if(state == 4){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
@@ -778,7 +779,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 		SSD1306_UpdateScreen();
 	}
 	
-	
+	/*** network info view ***/
 	else if(state == 5){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
@@ -791,6 +792,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 		SSD1306_UpdateScreen();
 	}
 	
+	/*** Contrast view ***/
 	else if(state == 6){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
