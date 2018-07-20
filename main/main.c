@@ -113,11 +113,22 @@ static void ENC(void* arg)
 
 void vDisplay(void *pvParameter)
 {
-	volatile esp_chip_info_t *pxTaskParam;
-	//pxTaskParam = (esp_chip_info_t*)pvParameter;
+	/* Print chip information */
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+    printf("[vDisplay]This is ESP32 chip with %d CPU cores, WiFi%s%s, ",
+            chip_info.cores,
+            (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
+            (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
+
+    printf("[vDisplay]silicon revision %d, \n", chip_info.revision);
+
+    printf("[vDisplay]%dMB %s flash\n", spi_flash_get_chip_size() / (1024 * 1024),
+            (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
+	
 	portBASE_TYPE xStatusReceive;
 	enum action rotate;
-	//printf("param = %d", pxTaskParam.cores);
+	
 	uint8_t state = 10; // default state
 	uint8_t frame = 1;
 	uint8_t menuitem = 1; // default item - Contrast
@@ -140,7 +151,7 @@ void vDisplay(void *pvParameter)
 		press_button = 0;	
 		if(change)
 		{
-			vDrawMenu(menuitem, state, selectRelay, temp, contrast);
+			vDrawMenu(menuitem, state, selectRelay, temp, contrast, chip_info);
 			change = 0;
 		}
 	/***** Read Encoder ***********************/
@@ -184,19 +195,19 @@ void vDisplay(void *pvParameter)
 				// go to Set temp
 				else if(press_button && menuitem == 2) { 
 					state = 2;
-					printf("State = 2\n");
+					printf("state = 2\n");
 				}
 				
 				// go to Process view
 				else if(press_button && menuitem == 3) { 
 					state = 3;
-					printf("State = 3\n");
+					printf("state = 3\n");
 				}
 				
 				// go to Chip info
 				else if(press_button && menuitem == 4) { 
 					state = 4;
-					printf("State = 4\n");
+					printf("state = 4\n");
 				}
 				
 				
@@ -204,7 +215,7 @@ void vDisplay(void *pvParameter)
 				
 				if(menuitem > 4){
 					state = 20;
-					printf("State = 20\n");
+					printf("state = 20\n");
 					frame = 2;
 				}
 
@@ -221,35 +232,35 @@ void vDisplay(void *pvParameter)
 				// go to Set temp
 				else if(press_button && menuitem == 2) { 
 					state = 2;
-					printf("State = 2\n");
+					printf("state = 2\n");
 				}
 				
 				// go to Process view
 				else if(press_button && menuitem == 3) { 
 					state = 3;
-					printf("State = 3\n");
+					printf("state = 3\n");
 				}
 				
 				// go to Chip info
 				else if(press_button && menuitem == 4) { 
 					state = 4;
-					printf("State = 4\n");
+					printf("state = 4\n");
 				}
 				
 				// go to Network info
 				else if(press_button && menuitem == 5) { 
 					state = 5;
-					printf("State = 5\n");
+					printf("state = 5\n");
 				}
 				
 				if(menuitem > 5){ 
 					state = 30;
-					printf("State = 30\n");
+					printf("state = 30\n");
 					frame = 3;
 				}
 				else if(menuitem < 2) { 
 					state = 10;
-					printf("State = 10\n");
+					printf("state = 10\n");
 					frame = 1;
 				}
 				break;
@@ -265,35 +276,35 @@ void vDisplay(void *pvParameter)
 				// go to Process view
 				else if(press_button && menuitem == 3) {
 					state = 3;
-					printf("State = 3\n");
+					printf("state = 3\n");
 				}
 				
 				// go to Chip info
 				else if(press_button && menuitem == 4) {
 					state = 4;
-					printf("State = 4\n");
+					printf("state = 4\n");
 				}
 				
 				// go to Network info
 				else if(press_button && menuitem == 5) {
 					state = 5;
-					printf("State = 5\n");
+					printf("state = 5\n");
 				}
 				
 				// go to Contrast
 				else if(press_button && menuitem == 6) {
 					state = 6;
-					printf("State = 6\n");
+					printf("state = 6\n");
 				}
 				
 				if(menuitem < 3) { 
 					state = 20;
-					printf("State = 20\n");
+					printf("state = 20\n");
 					frame = 2;
 				}
 				else if(menuitem > 6) {
 					state = 40;
-					printf("State = 40\n");
+					printf("state = 40\n");
 					frame = 4;
 				}
 				break;
@@ -311,35 +322,35 @@ void vDisplay(void *pvParameter)
 				// go to Chip info
 				else if(press_button && menuitem == 4) {
 					state = 4;
-					printf("State = 4\n");
+					printf("state = 4\n");
 				}
 				
 				// go to Network info
 				else if(press_button && menuitem == 5) {
 					state = 5;
-					printf("State = 4\n");
+					printf("state = 4\n");
 				}
 				
 				// go to Contrast
 				else if(press_button && menuitem == 6) {
 					state = 6;
-					printf("State = 6\n");
+					printf("state = 6\n");
 				}
 				
 				// go to Display sleep
 				else if(press_button && menuitem == 7) {
 					state = 7;
-					printf("State = 7\n");
+					printf("state = 7\n");
 				}
 				
 				if(menuitem < 4) { 
 					state = 30;
-					printf("State = 30\n");
+					printf("state = 30\n");
 					frame = 3;
 				}
 				else if(menuitem > 7) {
 					state = 50;
-					printf("State = 50\n");
+					printf("state = 50\n");
 					frame = 5;
 				}
 				break;
@@ -355,19 +366,19 @@ void vDisplay(void *pvParameter)
 				// go to Network info
 				else if(press_button && menuitem == 5) {
 					state = 5;
-					printf("State = 5\n");
+					printf("state = 5\n");
 				}
 				
 				// go to Contrast
 				else if(press_button && menuitem == 6) {
 					state = 6;
-					printf("State = 6\n");					
+					printf("state = 6\n");					
 				}
 				
 				// go to Display sleep
 				else if(press_button && menuitem == 7) {
 					state = 7;
-					printf("State = 7\n");
+					printf("state = 7\n");
 				}
 				
 				// go to Reset CPU
@@ -378,7 +389,7 @@ void vDisplay(void *pvParameter)
 				
 				if(menuitem < 5) { 
 					state = 40;
-					printf("State = 40\n");
+					printf("state = 40\n");
 					frame = 4;
 				}
 				
@@ -397,7 +408,7 @@ void vDisplay(void *pvParameter)
 				}
 				else if(press_button && frame == 1) {
 					state = 10;
-					printf("State = 10\n");
+					printf("state = 10\n");
 				}
 				break;
 				
@@ -541,20 +552,6 @@ void app_main()
 {
 	printf("Project - Termostat\n");
 	
-	/* Print chip information */
-    esp_chip_info_t chip_info;
-    esp_chip_info(&chip_info);
-    printf("This is ESP32 chip with %d CPU cores, WiFi%s%s, ",
-            chip_info.cores,
-            (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
-            (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
-
-    printf("silicon revision %d, ", chip_info.revision);
-
-    printf("%dMB %s flash\n", spi_flash_get_chip_size() / (1024 * 1024),
-            (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
-	
-	
 	/*** GPIO init ***/
 	gpio_config_t io_conf;
 	//Настройки GPIO для релейного ВЫХОДа
@@ -610,7 +607,7 @@ void app_main()
     gpio_isr_handler_add(GPIO_ENC_SW, gpio_isr_handler, (void*) GPIO_ENC_SW);
 	
 	
-	xStatusOLED = xTaskCreate(vDisplay, "vDisplay", 1024 * 2, (void*)&chip_info, 10, &xDisplay_Handle);
+	xStatusOLED = xTaskCreate(vDisplay, "vDisplay", 1024 * 2, NULL, 10, &xDisplay_Handle);
 		if(xStatusOLED == pdPASS)
 			printf("Task vDisplay is created!\n");
 		else

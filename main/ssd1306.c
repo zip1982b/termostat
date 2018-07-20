@@ -531,7 +531,7 @@ void vSetContrast(uint8_t contrast) {
 	//SSD1306_WRITECOMMAND(0x);  
 }
 
-void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, uint8_t contrast)
+void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info)
 {
 	char menuItem1[] = "Set relay";
 	char menuItem2[] = "Set temp";
@@ -771,11 +771,15 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 		SSD1306_Puts(menuItem4, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
 		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
 		SSD1306_GotoXY(5, 15);
-		SSD1306_Puts("ESP32 ", &Font_7x10, SSD1306_COLOR_WHITE);
-		//SSD1306_GotoXY(5, 35);
+		SSD1306_Puts("ESP32 cores: ", &Font_7x10, SSD1306_COLOR_WHITE);
 		char core[5];
-		//itoa("2", core, 10);
-		SSD1306_Puts("2", &Font_7x10, SSD1306_COLOR_WHITE);
+		itoa(chip_info.cores, core, 10);
+		SSD1306_Puts(core, &Font_7x10, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(5, 35);
+		SSD1306_Puts("rev: ", &Font_7x10, SSD1306_COLOR_WHITE);
+		char rev[3];
+		itoa(chip_info.revision, rev, 10);
+		SSD1306_Puts(rev, &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 	
