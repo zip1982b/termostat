@@ -4,7 +4,7 @@ This project is based on Espressif IoT Development Framework (esp-idf).
 autor: Zhan Beshchanov<zip1982b@gmail.com>
 
 
-![alt text](img/oled128x64.jpg "my first termostat :)")
+![alt text](img/oled128x64new.jpg "my first termostat :)")
 Hardware:
 * esp32
 * OLED ssd1306 (128x64)
