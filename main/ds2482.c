@@ -575,7 +575,7 @@ uint8_t OWReadByte(void)
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
-			printf("[OWReadByte()] - CMD_1WRB = OK \n");
+			//printf("[OWReadByte()] - CMD_1WRB = OK \n");
 			break;
 		case ESP_ERR_INVALID_ARG:
 			printf("[OWReadByte()] - Parameter error (1) \n");

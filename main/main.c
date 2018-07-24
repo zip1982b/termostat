@@ -613,10 +613,6 @@ static void vReadTemp(void* arg)
 			do{
 				//printf("i = %d\n", i);
 				pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
-				//printf("address memory pROM_NO = %p\n", pROM_NO[i]);
-				//printf("LastDiscrepancy value = %d\n", LastDiscrepancy);
-				//printf("LastFamilyDiscrepancy value = %d\n", LastFamilyDiscrepancy);
-				//printf("LastDeviceFlag value = %d\n", LastDeviceFlag);
 				rslt = OWSearch(&LastDiscrepancy, &LastFamilyDiscrepancy, &LastDeviceFlag); //pROM_NO[i]
 				if(rslt)
 				{
@@ -665,6 +661,7 @@ static void vReadTemp(void* arg)
 	
 	while(1)
 	{
+		vTaskDelay(3000 / portTICK_RATE_MS);
 		xSemaphoreTake(i2c_mux, portMAX_DELAY);
 		printf("**********************Cycle**********************************\n");
 		if(OWReset() && !short_detected && sensors > 0)
