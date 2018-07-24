@@ -8,20 +8,10 @@
 #ifndef MAIN_DS2482_H_
 #define MAIN_DS2482_H_
 
-#include "driver/i2c.h"
-
+//#include "driver/i2c.h"
+#include "i2c_set.h"
 
 #define DS2482_ADDR			0x18		/* slave address for DS2482 bridge*/
-
-
-
-#define WRITE_BIT			I2C_MASTER_WRITE /* I2C Master write */
-#define READ_BIT			I2C_MASTER_READ  /* I2C_MASTER_READ */
-#define ACK_CHECK_EN		0x1				 /* I2C master will check ack from slave */
-#define ACK_CHECK_DIS		0x0				 /* I2C master will not check ack from slave */
-#define ACK_VAL				0x0				 /* I2C ack value */
-#define NACK_VAL			0x1				 /* I2C nack value */
-
 #define POLL_LIMIT			30
 
 /* Masks STATUS register ds2482 */
@@ -51,28 +41,10 @@
 #define SearchROM			0xF0			//the search command that all 1-wire devices respond.
 
 
-
-
-
-
-
-
 uint8_t calc_crc8(uint8_t);
 
 
 uint8_t getbits(uint8_t, int, int);
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -84,7 +56,6 @@ uint8_t getbits(uint8_t, int, int);
 *	 0: device (ds2482) not detected or failure to perform reset
 */
 uint8_t DS2482_reset(void);
-
 
 
 
@@ -265,9 +236,6 @@ uint8_t OWSearch(uint8_t *ld, uint8_t *lfd, uint8_t *ldf);//, uint8_t *ROM_NO
 * 			0: device not found, end of search.
 */
 //uint8_t OWNext(void);
-
-
-
 
 
 #endif

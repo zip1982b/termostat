@@ -21,7 +21,6 @@ Autor: zip1982b
 
 
 #include "ssd1306.h"
-
 #include "ds2482.h"
 
 

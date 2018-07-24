@@ -33,10 +33,14 @@
 #ifndef ssd1306_I2C_H
 #define ssd1306_I2C_H
 
-#include "driver/i2c.h"
+//#include "driver/i2c.h"
+#include "i2c_set.h"
 
 
-void i2c_master_init();
+/*** ssd1306 i2c address ***/
+#define OLED_I2C_ADDRESS   0x3C
+
+
 
 /**
  * @brief  Writes single byte to slave

@@ -1,4 +1,4 @@
-#include <stdio.h>
+//#include <stdio.h>
 #include "ds2482.h"
 
 
