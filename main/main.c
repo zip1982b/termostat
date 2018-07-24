@@ -24,6 +24,7 @@ Autor: zip1982b
 #include "ds2482.h"
 
 
+SemaphoreHandle_t i2c_mux = NULL; // access to i2c
 
 /* 	
 	cr	- clockwise rotation
@@ -40,6 +41,13 @@ xTaskHandle xRead_Temp_Handle; // identification Read Temp task
 
 static xQueueHandle gpio_evt_queue = NULL;
 static xQueueHandle ENC_queue = NULL;
+
+
+
+
+
+
+
 
 
 extern uint8_t short_detected; //short detected on 1-wire net
@@ -156,7 +164,9 @@ void vDisplay(void *pvParameter)
 
 	uint8_t change = 1;
 	
+	xSemaphoreTake(i2c_mux, portMAX_DELAY); 
 	SSD1306_Init();
+	xSemaphoreGive(i2c_mux);
 	
 	uint8_t down_cw;
 	uint8_t up_ccw;
@@ -168,8 +178,10 @@ void vDisplay(void *pvParameter)
 		press_button = 0;	
 		if(change)
 		{
+			xSemaphoreTake(i2c_mux, portMAX_DELAY);
 			vDrawMenu(menuitem, state, selectRelay, temp, contrast, chip_info);
 			change = 0;
+			xSemaphoreGive(i2c_mux);
 		}
 	/***** Read Encoder ***********************/
 		xStatusReceive = xQueueReceive(ENC_queue, &rotate, 300/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
@@ -587,7 +599,9 @@ static void vReadTemp(void* arg)
 	
 	
 
-	vTaskDelay(1000 / portTICK_RATE_MS);
+	vTaskDelay(5000 / portTICK_RATE_MS);
+	
+	xSemaphoreTake(i2c_mux, portMAX_DELAY);
 	if(DS2482_detect())
 	{
 		/*ds2482 i2c/1-wire bridge detected*/
@@ -647,14 +661,15 @@ static void vReadTemp(void* arg)
 	}
 	else
 		printf("ds2482 i2c/1-wire bridge not detected\n");
-	
+	xSemaphoreGive(i2c_mux);
 	
 	while(1)
 	{
+		xSemaphoreTake(i2c_mux, portMAX_DELAY);
 		printf("**********************Cycle**********************************\n");
 		if(OWReset() && !short_detected && sensors > 0)
 		{
-			vTaskDelay(100 / portTICK_RATE_MS);
+			vTaskDelay(50 / portTICK_RATE_MS);
 			OWWriteByte(SkipROM); //0xCC - пропуск проверки адресов
 			printf("SkipROM\n");
 			OWWriteByte(ConvertT); //0x44 - все датчики измеряют свою температуру
@@ -666,7 +681,7 @@ static void vReadTemp(void* arg)
 				crc8 = 0;
 				if(OWReset() && !short_detected)
 				{
-					vTaskDelay(100 / portTICK_RATE_MS);
+					vTaskDelay(50 / portTICK_RATE_MS);
 					OWWriteByte(MatchROM); //0x55 - соответствие адреса
 					printf("send MatchROM command\n");
 					// send ROM address = 64 bit
@@ -723,6 +738,7 @@ static void vReadTemp(void* arg)
 		}
 		else
 			printf("1-wire device not detected(1) or sensors = 0 or short_detected = %d\n", short_detected);
+		xSemaphoreGive(i2c_mux);
 	}
 	vTaskDelete(NULL);
 }
@@ -731,6 +747,8 @@ static void vReadTemp(void* arg)
 void app_main()
 {
 	printf("Project - Termostat\n");
+	
+	i2c_mux = xSemaphoreCreateMutex();
 	
 	/*** GPIO init ***/
 	gpio_config_t io_conf;
@@ -789,21 +807,21 @@ void app_main()
 	
 	i2c_master_init();
 	
-	
-	
-	xStatusOLED = xTaskCreate(vDisplay, "vDisplay", 1024 * 2, NULL, 10, &xDisplay_Handle);
+	if(i2c_mux){
+		xStatusOLED = xTaskCreate(vDisplay, "vDisplay", 1024 * 2, NULL, 10, &xDisplay_Handle);
 		if(xStatusOLED == pdPASS)
 			printf("Task vDisplay is created!\n");
 		else
 			printf("Task vDisplay is not created\n");
 		
 		
-	xStatusReadTemp = xTaskCreate(vReadTemp, "vReadTemp", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
+		xStatusReadTemp = xTaskCreate(vReadTemp, "vReadTemp", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
 		if(xStatusReadTemp == pdPASS)
 			printf("Task vReadTemp is created!\n");
 		else
 			printf("Task vReadTemp is not created\n");
-	
-	
+	}
+	else
+		printf("mutex (i2c_mux) is not created\n");
 }
 
