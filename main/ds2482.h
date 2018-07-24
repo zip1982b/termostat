@@ -14,6 +14,12 @@
 #define DS2482_ADDR			0x18		/* slave address for DS2482 bridge*/
 #define POLL_LIMIT			30
 
+
+
+
+
+
+
 /* Masks STATUS register ds2482 */
 /* |DIR|TSB|SBR|RST|LL|SD|PPD|1WB| */
 #define STATUS_DIR			0x80			//10000000b - Branch Direction taken
@@ -39,6 +45,13 @@
 
 
 #define SearchROM			0xF0			//the search command that all 1-wire devices respond.
+#define ReadROM 			0x33	
+#define ReadScratchpad 		0xBE
+#define SkipROM 			0xCC
+#define MatchROM 			0x55
+#define ConvertT 			0x44
+#define WriteScratchpad 	0x4E
+
 
 
 uint8_t calc_crc8(uint8_t);

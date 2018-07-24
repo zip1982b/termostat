@@ -67,7 +67,7 @@ static SSD1306_t SSD1306;
 uint8_t SSD1306_Init(void) {
 
 	/* Init I2C */
-	i2c_master_init();
+	//i2c_master_init();
 	
 	/* Check if LCD connected to I2C */
 	if (!ssd1306_I2C_IsDeviceConnected()) {
