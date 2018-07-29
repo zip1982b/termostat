@@ -3,8 +3,15 @@
 
 
 uint8_t short_detected; //short detected on 1-wire net
+
+
 uint8_t ROM_NO[8];
+uint8_t LastDiscrepancy = 0;
+uint8_t LastFamilyDiscrepancy = 0; 
+uint8_t LastDeviceFlag = 0;
 uint8_t crc8;
+
+
 uint8_t crc_tbl[] = {
 	0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
 	157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
@@ -823,7 +830,7 @@ uint8_t DS2482_search_triplet(uint8_t search_direction)
 
 
 
-uint8_t OWSearch(uint8_t *ld, uint8_t *lfd, uint8_t *ldf) //, uint8_t *ROM_NO
+uint8_t OWSearch()
 {
 	int id_bit; // 
 	int cmp_id_bit; // the complement of the id_bit. This bit is AND of the complement of all of the id_bit_number
@@ -849,19 +856,19 @@ uint8_t OWSearch(uint8_t *ld, uint8_t *lfd, uint8_t *ldf) //, uint8_t *ROM_NO
 	//printf("*ldf value = %d\n", *ldf);
 	
 	// if the last call was not the last one 
-	if (!*ldf)
+	if (!LastDeviceFlag)
 	{
 		// 1-wire reset
 		if (!OWReset())
 		{
 			// reset the search
-			*ld = 0;
-			*ldf = 0;
-			*lfd = 0;
+			LastDiscrepancy = 0;
+			LastDeviceFlag = 0;
+			LastFamilyDiscrepancy = 0;
 			return 0;
 			
 		}
-		vTaskDelay(250 / portTICK_RATE_MS);
+		//vTaskDelay(250 / portTICK_RATE_MS);
 		// issue the search command
 		// выдать команду поиска
 		OWWriteByte(SearchROM); // 0xF0
@@ -870,7 +877,7 @@ uint8_t OWSearch(uint8_t *ld, uint8_t *lfd, uint8_t *ldf) //, uint8_t *ROM_NO
 		// Цикл поиска
 		do
 		{
-			if(id_bit_number < *ld)
+			if(id_bit_number < LastDiscrepancy)
 			{
 				if((ROM_NO[rom_byte_number] & rom_byte_mask) > 0)
 					search_direction = 1;
@@ -880,7 +887,7 @@ uint8_t OWSearch(uint8_t *ld, uint8_t *lfd, uint8_t *ldf) //, uint8_t *ROM_NO
 			else
 			{
 				// if equal to last pick 1, if not then pick 0
-				if(id_bit_number == *ld)
+				if(id_bit_number == LastDiscrepancy)
 					search_direction = 1;
 				else
 					search_direction = 0;
@@ -908,7 +915,7 @@ uint8_t OWSearch(uint8_t *ld, uint8_t *lfd, uint8_t *ldf) //, uint8_t *ROM_NO
 					
 					// check for last discrepancy in family
 					if(last_zero < 9)
-						*lfd = last_zero;
+						LastFamilyDiscrepancy = last_zero;
 				}
 				
 				// set or clear  the bit in the ROM byte rom_byte_number
@@ -941,11 +948,11 @@ uint8_t OWSearch(uint8_t *ld, uint8_t *lfd, uint8_t *ldf) //, uint8_t *ROM_NO
 			// search successful so set LastDiscrepancy, LastDeviceFlag
 			// search_result
 			//printf("last_zero = %d\n", last_zero);
-			*ld = last_zero;
+			LastDiscrepancy = last_zero;
 			
 			//check for last device
-			if(*ld == 0)
-				*ldf = 1;
+			if(LastDiscrepancy == 0)
+				LastDeviceFlag = 1;
 			
 			search_result = 1;
 		}	
@@ -956,9 +963,9 @@ uint8_t OWSearch(uint8_t *ld, uint8_t *lfd, uint8_t *ldf) //, uint8_t *ROM_NO
 	
 	if(!search_result || (ROM_NO[0] == 0))
 	{
-		*ld = 0;
-		*ldf = 0;
-		*lfd = 0;
+		LastDiscrepancy = 0;
+		LastDeviceFlag = 0;
+		LastFamilyDiscrepancy = 0;
 		search_result = 0;
 	}
 	

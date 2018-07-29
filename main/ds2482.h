@@ -223,7 +223,7 @@ uint8_t calc_crc8(uint8_t value);
 * 			1: When a 1-wire device was found and its serial number placed in the global ROM.
 * 			0: When no new device was found.
 */
-uint8_t OWSearch(uint8_t *ld, uint8_t *lfd, uint8_t *ldf);//, uint8_t *ROM_NO
+uint8_t OWSearch(void);
 
 
 

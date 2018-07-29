@@ -579,9 +579,11 @@ static void vReadTemp(void* arg)
 {
 	/* Find Devices */
 	uint8_t rslt = 0;
-	static uint8_t LastDiscrepancy = 0;
-	static uint8_t LastFamilyDiscrepancy = 0; 
-	static uint8_t LastDeviceFlag = 0;
+	/*
+	uint8_t LastDiscrepancy = 0;
+	uint8_t LastFamilyDiscrepancy = 0; 
+	uint8_t LastDeviceFlag = 0;
+	*/
 	
 	uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
 	
@@ -613,7 +615,7 @@ static void vReadTemp(void* arg)
 			do{
 				//printf("i = %d\n", i);
 				pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
-				rslt = OWSearch(&LastDiscrepancy, &LastFamilyDiscrepancy, &LastDeviceFlag); //pROM_NO[i]
+				rslt = OWSearch();
 				if(rslt)
 				{
 					sensors++;
