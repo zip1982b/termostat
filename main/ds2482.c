@@ -185,46 +185,22 @@ uint8_t DS2482_write_config(uint8_t config)
 	tmp = 0;
 	//printf("reg_config = %d \n", reg_config);
 	
+	uint8_t rslt_wcfg;
+	uint8_t rslt_config;
 	
-	
-	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd);  //S
-	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
-	i2c_master_write_byte(cmd, CMD_WCFG, ACK_CHECK_EN); //WCFG - [A]
-	i2c_master_write_byte(cmd, reg_config, ACK_CHECK_EN); //CF - [A]
-	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
-	switch(ret){
-		case ESP_OK:
+	rslt_wcfg = write_command(CMD_WCFG); // S AD,0 [A] WCFG [A] P
+	if(rslt_wcfg)
+	{
+		rslt_config = write_command(reg_config);
+		if(rslt_config)
+		{
 			printf("[DS2482_write_config()] - WCFG and CF = OK \n");
-			break;
-		case ESP_ERR_INVALID_ARG:
-			printf("[DS2482_write_config()] - Parameter error (1) \n");
-			return 0;
-		case ESP_FAIL:
-			printf("[DS2482_write_config()] - Sending command error, slave doesn`t ACK the transfer \n");
-			return 0;
-		case ESP_ERR_INVALID_STATE:
-			printf("[DS2482_write_config()] - i2c driver not installed or not in master mode \n");
-			return 0;
-		case ESP_ERR_TIMEOUT:
-			printf("[DS2482_write_config()] - Operation timeout because the bus is busy \n");
-			return 0;
-		default:
-			printf("[DS2482_write_config()] - default block");
-			return 0;
-	}
-	cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd); //S
-	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
-	i2c_master_read_byte(cmd, &read_config, NACK_VAL); // [CF] - notA
-	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
-	switch(ret){
-		case ESP_OK:
-			//printf("[DS2482_write_config()] - read_config = %d \n", read_config);
+			// S AD,1 [A] [Status] A\ [Status] A\ P
+			
+			read_config = read_status();
+			printf("[DS2482_write_config()] read_config = %d\n", read_config);
+			
+			
 			tmp = getbits(reg_config, 3, 4);
 			if(tmp != read_config)
 			{
@@ -240,22 +216,14 @@ uint8_t DS2482_write_config(uint8_t config)
 				return 1;
 			}
 			
-		case ESP_ERR_INVALID_ARG:
-			printf("[DS2482_write_config()] - Parameter error (2) \n");
-			return 0;
-		case ESP_FAIL:
-			printf("[DS2482_write_config()] - Sending command error, slave doesn`t ACK the transfer \n");
-			return 0;
-		case ESP_ERR_INVALID_STATE:
-			printf("[DS2482_write_config()] - i2c driver not installed or not in master mode \n");
-			return 0;
-		case ESP_ERR_TIMEOUT:
-			printf("[DS2482_write_config()] - Operation timeout because the bus is busy \n");
-			return 0;
-		default:
-			printf("[DS2482_write_config()] - default block");
-			return 0;
+			
+		}	
 	}
+	
+	
+	
+	
+	
 }
 
 
@@ -269,19 +237,20 @@ uint8_t DS2482_write_config(uint8_t config)
 uint8_t OWReset(void)
 {
 	/*
-	 * S AD,0 [A] 1WRS [A] P S AD,1 [A] [Status] A [Status] A\ P
-	 *									\--------/
-	 *						Repeat until 1WB bit has changed to 0
+	 * S AD,0 [A] 1WRS [A] P
+	 * S AD,1 [A] [Status] A [Status] A\ P
+	 *	Repeat until 1WB bit has changed to 0								
 	*/
 	
 	int poll_count = 0;
 	uint8_t st = 0;
 	uint8_t rslt;
 	
-	rslt = write_command(CMD_1WRS);
+	rslt = write_command(CMD_1WRS); // S AD,0 [A] 1WRS [A] P
 	
 	if(rslt)
 	{
+		// S AD,1 [A] [Status] A\ [Status] A\ P
 		do
 		{
 			st = read_status();
