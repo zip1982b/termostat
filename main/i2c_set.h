@@ -3,6 +3,8 @@
 
 #include "driver/i2c.h"
 
+
+#define DS2482_ADDR			0x18
 /*** i2c settings ***/
 #define I2C_MASTER_SCL_IO          19               /*!< gpio number for I2C master clock */
 #define I2C_MASTER_SDA_IO          18               /*!< gpio number for I2C master data  */
@@ -23,6 +25,8 @@
 
 void i2c_master_init();
 
+uint8_t read_status(void);
 
+uint8_t write_command(uint8_t);
 
 #endif

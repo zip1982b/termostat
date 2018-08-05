@@ -12,7 +12,7 @@
 #include "i2c_set.h"
 
 #define DS2482_ADDR			0x18		/* slave address for DS2482 bridge*/
-#define POLL_LIMIT			30
+#define POLL_LIMIT			100
 
 
 
@@ -26,10 +26,10 @@
 #define STATUS_TSB			0x40			//01000000b - Triplet second bit
 #define STATUS_SBR			0x20			//00100000b - Single bit result
 #define STATUS_RST			0x10			//00010000b - Device reset
-#define STATUS_LL			0x8				//00001000b - Logic level
-#define STATUS_SD			0x4				//00000100b - Short detected
-#define STATUS_PPD			0x2				//00000010b - Presence pulse detected
-#define STATUS_1WB			0x1				//00000001b - 1-wire busy
+#define STATUS_LL			0x08			//00001000b - Logic level
+#define STATUS_SD			0x04			//00000100b - Short detected
+#define STATUS_PPD			0x02			//00000010b - Presence pulse detected
+#define STATUS_1WB			0x01			//00000001b - 1-wire busy
 
 #define CONFIG_APU			0x1
 
@@ -226,7 +226,9 @@ uint8_t calc_crc8(uint8_t value);
 uint8_t OWSearch(void);
 
 
+uint8_t OWFirst(void);
 
+uint8_t OWNext(void);
 
 
 /**

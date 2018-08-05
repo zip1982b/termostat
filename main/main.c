@@ -50,7 +50,7 @@ static xQueueHandle ENC_queue = NULL;
 
 
 
-extern uint8_t short_detected; //short detected on 1-wire net
+extern uint8_t short_detected = 0; //short detected on 1-wire net
 extern uint8_t crc8;
 extern uint8_t crc_tbl[];
 extern uint8_t ROM_NO[8];
@@ -124,15 +124,13 @@ static void ENC(void* arg)
 			rotate = bp;
 			//printf("[ENC]rotate = %d\n", rotate);
 			printf("[ENC]Button is pressed\n");
-			vTaskDelay(800 / portTICK_RATE_MS);
+			vTaskDelay(800 / portTICK_RATE_MS); // Task blocked - bounce protection
 			xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
 			gpio_set_intr_type(GPIO_ENC_SW, GPIO_INTR_NEGEDGE);//enable
 			
 		}
     }
 }
-
-
 
 
 
@@ -574,16 +572,10 @@ void vDisplay(void *pvParameter)
 
 
 
-
 static void vReadTemp(void* arg)
 {
 	/* Find Devices */
 	uint8_t rslt = 0;
-	/*
-	uint8_t LastDiscrepancy = 0;
-	uint8_t LastFamilyDiscrepancy = 0; 
-	uint8_t LastDeviceFlag = 0;
-	*/
 	
 	uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
 	
@@ -604,39 +596,42 @@ static void vReadTemp(void* arg)
 	vTaskDelay(5000 / portTICK_RATE_MS);
 	
 	xSemaphoreTake(i2c_mux, portMAX_DELAY);
-	if(DS2482_detect())
+	if(DS2482_detect()) /* ds2482 i2c/1-wire bridge detected ? */
 	{
-		/*ds2482 i2c/1-wire bridge detected*/
+		
 		if(OWReset() && !short_detected)
 		{
+			printf("200 mSec ********\n");
+			vTaskDelay(200 / portTICK_RATE_MS);
 			/*1-wire device detected*/
 			// find address ALL devices
 			printf("\nFIND ALL ******** \n");
-			do{
+			rslt = OWFirst();
+			printf("result OWFirst() = %d\n", rslt);
+			while(rslt)
+			{
 				//printf("i = %d\n", i);
 				pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
-				rslt = OWSearch();
-				if(rslt)
+				
+				sensors++;
+				for(j = 7; j >= 0; j--)
 				{
-					sensors++;
-					for(j = 7; j >= 0; j--)
-					{
-						*(pROM_NO[i] + j) = ROM_NO[j];
-						printf("%02X", *(pROM_NO[i] + j));
-					}
-					printf("\nSensor# %d\n", i + 1);
+					*(pROM_NO[i] + j) = ROM_NO[j];
+					printf("%02X", *(pROM_NO[i] + j));
 				}
-				else{
-					printf("1-wire device end find\n");
-					free(pROM_NO[i]);
-					printf("sensors = %d\n", sensors);
-				}
+				printf("\nSensor# %d\n", i + 1);
 				i++;
-				//vTaskDelay(250 / portTICK_RATE_MS);
+				vTaskDelay(100 / portTICK_RATE_MS);
+				rslt = OWNext();
+				printf("result OWNext() = %d\n", rslt);
 			}
-			while(i <= 3 && rslt); // maximum 4 address
+			printf("1-wire device end find\n");
+			//free(pROM_NO[i]);
+			printf("sensors = %d\n", sensors);
+			
 			printf("1-wire device end find\n");
 		}
+		
 		else
 			printf("1-wire device not detected (1) or short_detected = %d\n", short_detected);
 		
@@ -790,7 +785,7 @@ void app_main()
 	//create a queue to handle gpio event from isr
     gpio_evt_queue = xQueueCreate(5, sizeof(uint32_t));
     //start gpio task
-    xTaskCreate(ENC, "ENC", 1548, NULL, 10, NULL);
+    xTaskCreate(ENC, "ENC", 1548, NULL, 12, NULL);
 	
 	ENC_queue = xQueueCreate(10, sizeof(uint32_t));
 	
@@ -806,8 +801,10 @@ void app_main()
 	
 	i2c_master_init();
 	
+	
 	if(i2c_mux){
-		xStatusOLED = xTaskCreate(vDisplay, "vDisplay", 1024 * 2, NULL, 10, &xDisplay_Handle);
+		
+		xStatusOLED = xTaskCreate(vDisplay, "vDisplay", 1024 * 2, NULL, 11, &xDisplay_Handle);
 		if(xStatusOLED == pdPASS)
 			printf("Task vDisplay is created!\n");
 		else
@@ -822,5 +819,6 @@ void app_main()
 	}
 	else
 		printf("mutex (i2c_mux) is not created\n");
+	
 }
 

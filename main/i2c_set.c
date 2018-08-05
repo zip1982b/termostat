@@ -15,3 +15,72 @@ void i2c_master_init()
                        I2C_MASTER_RX_BUF_DISABLE,
                        I2C_MASTER_TX_BUF_DISABLE, 0);
 }
+
+
+uint8_t write_command(uint8_t command)
+{
+	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+	i2c_master_start(cmd);  //S
+	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
+	i2c_master_write_byte(cmd, command, ACK_CHECK_EN); //command - [A]
+	i2c_master_stop(cmd); // P
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000/portTICK_RATE_MS);
+	i2c_cmd_link_delete(cmd);
+	switch(ret){
+		case ESP_OK:
+			printf("[write_command()] - OK\n");
+			return 1;
+		case ESP_ERR_INVALID_ARG:
+			printf("[write_command()] - Parameter error \n");
+			return 0;
+		case ESP_FAIL:
+			printf("[write_command()] - Sending command error, slave doesn`t ACK the transfer \n");
+			return 0;
+		case ESP_ERR_INVALID_STATE:
+			printf("[write_command()] - i2c driver not installed or not in master mode \n");
+			return 0;
+		case ESP_ERR_TIMEOUT:
+			printf("[write_command()] - Operation timeout because the bus is busy \n");
+			return 0;
+		default:
+			printf("[write_command()] - default block");
+			return 0;
+	}
+}
+
+
+uint8_t read_status(void)
+{
+	uint8_t status = 0;
+	
+	i2c_cmd_handle_t cmd = i2c_cmd_link_create(); 
+	i2c_master_start(cmd); //S
+	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
+	i2c_master_read_byte(cmd, &status, NACK_VAL); //[Status] /A
+	i2c_master_stop(cmd); // P
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000/portTICK_RATE_MS);
+	i2c_cmd_link_delete(cmd);
+	switch(ret){
+		case ESP_OK:
+			printf("[read_status] - status = %d\n", status);
+			break;
+		case ESP_ERR_INVALID_ARG:
+			printf("[read_status] - Parameter error (2) \n");
+			break;
+		case ESP_FAIL:
+			printf("[OWReset()] - Sending command error, slave doesn`t ACK the transfer \n");
+			break;
+		case ESP_ERR_INVALID_STATE:
+			printf("[read_status] - i2c driver not installed or not in master mode \n");
+			break;
+		case ESP_ERR_TIMEOUT:
+			printf("[read_status] - Operation timeout because the bus is busy \n");
+			break;
+		default:
+			printf("[read_status] - default block");
+	}
+	return status;	
+}
+
+
+	
