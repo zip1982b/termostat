@@ -25,7 +25,7 @@
 
 void i2c_master_init();
 
-uint8_t read_status(void);
+uint8_t read_registerDS2482(void);
 
 uint8_t write_command(uint8_t);
 

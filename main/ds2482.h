@@ -12,7 +12,7 @@
 #include "i2c_set.h"
 
 #define DS2482_ADDR			0x18		/* slave address for DS2482 bridge*/
-#define POLL_LIMIT			100
+#define POLL_LIMIT			10
 
 
 

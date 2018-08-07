@@ -16,7 +16,15 @@ void i2c_master_init()
                        I2C_MASTER_TX_BUF_DISABLE, 0);
 }
 
-
+/* 
+* S - 	Start condition
+* AD,0 - Select DS2482-100 for Write Access
+* A - Acknowledged
+* A\ - NOT Acknowledged
+* [] -slave(ds2482) answer
+* P -Stop condition
+ */
+ 
 uint8_t write_command(uint8_t command)
 {
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
@@ -49,37 +57,48 @@ uint8_t write_command(uint8_t command)
 }
 
 
-uint8_t read_status(void)
+
+
+/* 
+* S - 	Start condition
+* AD,1 - Select DS2482-100 for Read Access  
+* A - Acknowledged
+* A\ - NOT Acknowledged
+* [] -slave(ds2482) answer
+* P -Stop condition
+ */
+
+uint8_t read_registerDS2482(void)
 {
-	uint8_t status = 0;
+	uint8_t reg = 0;
 	
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create(); 
 	i2c_master_start(cmd); //S
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
-	i2c_master_read_byte(cmd, &status, NACK_VAL); //[Status] /A
+	i2c_master_read_byte(cmd, &reg, NACK_VAL); //[reg] /A
 	i2c_master_stop(cmd); // P
 	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000/portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
-			printf("[read_status] - status = %d\n", status);
+			printf("[read_reg] - reg = %d\n", reg);
 			break;
 		case ESP_ERR_INVALID_ARG:
-			printf("[read_status] - Parameter error (2) \n");
+			printf("[read_reg] - Parameter error (2) \n");
 			break;
 		case ESP_FAIL:
 			printf("[OWReset()] - Sending command error, slave doesn`t ACK the transfer \n");
 			break;
 		case ESP_ERR_INVALID_STATE:
-			printf("[read_status] - i2c driver not installed or not in master mode \n");
+			printf("[read_reg] - i2c driver not installed or not in master mode \n");
 			break;
 		case ESP_ERR_TIMEOUT:
-			printf("[read_status] - Operation timeout because the bus is busy \n");
+			printf("[read_reg] - Operation timeout because the bus is busy \n");
 			break;
 		default:
-			printf("[read_status] - default block");
+			printf("[read_reg] - default block");
 	}
-	return status;	
+	return reg;	
 }
 
 
