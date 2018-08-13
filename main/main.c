@@ -579,11 +579,6 @@ static void vReadTemp(void* arg)
 {
 	/* Find Devices */
 	uint8_t rslt = 0;
-	/*
-	uint8_t LastDiscrepancy = 0;
-	uint8_t LastFamilyDiscrepancy = 0; 
-	uint8_t LastDeviceFlag = 0;
-	*/
 	
 	uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
 	
@@ -612,35 +607,26 @@ static void vReadTemp(void* arg)
 			/*1-wire device detected*/
 			// find address ALL devices
 			printf("\nFIND ALL ******** \n");
-			do{
+			rslt = OWFirst();
+			printf("result OWFirst() = %d\n", rslt);
+			while(rslt)
+			{
 				//printf("i = %d\n", i);
 				pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
-				rslt = OWSearch();
-				if(rslt)
+				sensors++;
+				for(j = 7; j >= 0; j--)
 				{
-					sensors++;
-					for(j = 7; j >= 0; j--)
-					{
-						*(pROM_NO[i] + j) = ROM_NO[j];
-						printf("%02X", *(pROM_NO[i] + j));
-					}
-					printf("\nSensor# %d\n", i + 1);
+					*(pROM_NO[i] + j) = ROM_NO[j];
+					printf("%02X", *(pROM_NO[i] + j));
 				}
-				else{
-					printf("1-wire device end find\n");
-					free(pROM_NO[i]);
-					printf("sensors = %d\n", sensors);
-				}
+				printf("\nSensor# %d\n", i + 1);
 				i++;
-				//vTaskDelay(250 / portTICK_RATE_MS);
+				rslt = OWNext();
+				printf("result OWNext() = %d\n", rslt);
 			}
-			while(i <= 3 && rslt); // maximum 4 address
+			printf("sensors = %d\n", sensors);
 			printf("1-wire device end find\n");
-		}
-		else
-			printf("1-wire device not detected (1) or short_detected = %d\n", short_detected);
-		
-		if(OWReset() && !short_detected){
+			
 			vTaskDelay(100 / portTICK_RATE_MS);
 			OWWriteByte(SkipROM); //0xCC
 			printf("SkipROM\n");
@@ -654,7 +640,8 @@ static void vReadTemp(void* arg)
 			printf("Config = 0x7F - 12 bit\n");
 		}
 		else
-			printf("1-wire device not detected (2) or short_detected = %d\n", short_detected);
+			printf("1-wire device not detected (1) or short_detected = %d\n", short_detected);
+		
 		
 	}
 	else

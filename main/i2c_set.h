@@ -19,10 +19,12 @@
 #define NACK_VAL			0x1				 		/* I2C nack value */
 
 
-
+#define DS2482_ADDR			0x18
 
 void i2c_master_init();
 
+
+uint8_t read_statusDS2482(void);
 
 
 #endif

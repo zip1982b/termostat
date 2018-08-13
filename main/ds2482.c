@@ -198,12 +198,13 @@ uint8_t DS2482_write_config(uint8_t config)
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
-			//printf("[DS2482_write_config()] - read_config = %d \n", read_config);
 			tmp = getbits(reg_config, 3, 4);
+			printf("[DS2482_write_config()] - read_config = %d \n", read_config);
+			printf("[DS2482_write_config()] - tmp = %d \n", tmp);
 			if(tmp != read_config)
 			{
 				//handle error
-				//printf("[DS2482_write_config()] - tmp = %d \n", tmp);
+				printf("[DS2482_write_config()] - tmp = %d not= read_config = %d and DS2482_reset()\n", tmp, read_config);
 				DS2482_reset();
 				return 0;
 			}
@@ -238,7 +239,7 @@ uint8_t DS2482_detect()
 	uint8_t c1WS = 0; //1-wire speed
 	uint8_t cSPU = 0; //Strong pullup
 	uint8_t cPPM = 0; //Precense pulse masking
-	uint8_t cAPU = 1; //Active pullup
+	uint8_t cAPU = 0; //Active pullup
 	
 	if(!DS2482_reset())
 	{
@@ -489,17 +490,17 @@ void OWWriteByte(uint8_t sendbyte)
 	*/
 	uint8_t status;
 	int poll_count = 0;
-	uint8_t *st;
-	st = &status;
+	
 	
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);  //S
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
 	i2c_master_write_byte(cmd, CMD_1WWB, ACK_CHECK_EN); //1WWB - [A]
 	i2c_master_write_byte(cmd, sendbyte, ACK_CHECK_EN); //DD - [A]
-	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
+	//i2c_master_stop(cmd); // P
+	//esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	//i2c_cmd_link_delete(cmd);
+	/*
 	switch(ret){
 		case ESP_OK:
 			printf("[OWWriteByte()] - CMD_1WWB = OK \n");
@@ -508,7 +509,7 @@ void OWWriteByte(uint8_t sendbyte)
 			printf("[OWWriteByte()] - Parameter error (1) \n");
 			break;
 		case ESP_FAIL:
-			printf("[OWWriteByte()] - Sending command error, slave doesn`t ACK the transfer \n");
+			printf("[OWWriteByte()] - Sending command error, slave doesn`t ACK the transfer 1\n");
 			break;
 		case ESP_ERR_INVALID_STATE:
 			printf("[OWWriteByte()] - i2c driver not installed or not in master mode \n");
@@ -519,28 +520,29 @@ void OWWriteByte(uint8_t sendbyte)
 		default:
 			printf("[OWWriteByte()] - default block\n");
 	}
-	vTaskDelay(30 / portTICK_RATE_MS);
-	cmd = i2c_cmd_link_create();
+	*/
+	//vTaskDelay(30 / portTICK_RATE_MS);
+	//cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd); //S
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
 	do
 	{
-		i2c_master_read_byte(cmd, st, ACK_VAL); //[Status] A
+		i2c_master_read_byte(cmd, &status, ACK_VAL); //[Status] A
 	}
-	while ((*st & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat until 1WB bit has changed to 0
-	i2c_master_read_byte(cmd, st, NACK_VAL); //[Status] notA
+	while ((status & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat until 1WB bit has changed to 0
+	i2c_master_read_byte(cmd, &status, NACK_VAL); //[Status] notA
 	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
-			//printf("[OWWriteByte()] - *st = %d \n", *st);
+			printf("[OWWriteByte()] - status = %d \n", status);
 			break;
 		case ESP_ERR_INVALID_ARG:
 			printf("[OWWriteByte()] - Parameter error (2) \n");
 			break;
 		case ESP_FAIL:
-			printf("[OWWriteByte()] - Sending command error, slave doesn`t ACK the transfer \n");
+			printf("[OWWriteByte()] - Sending command error, slave doesn`t ACK the transfer 2\n");
 			break;
 		case ESP_ERR_INVALID_STATE:
 			printf("[OWWriteByte()] - i2c driver not installed or not in master mode \n");
@@ -755,8 +757,7 @@ uint8_t DS2482_search_triplet(uint8_t search_direction)
 	*/
 	uint8_t status;
 	int poll_count = 0;
-	uint8_t *st;
-	st = &status;
+	
 	
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);  //S
@@ -766,6 +767,7 @@ uint8_t DS2482_search_triplet(uint8_t search_direction)
 	i2c_master_stop(cmd); // P
 	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
+	
 	switch(ret){
 		case ESP_OK:
 			//printf("[DS2482_search_triplet()] - CMD_1WT = OK \n");
@@ -781,49 +783,42 @@ uint8_t DS2482_search_triplet(uint8_t search_direction)
 		default:
 			printf("[DS2482_search_triplet()] - default block");
 	}
-	cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd); //S
-	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
+
+	
 	do
 	{
-		i2c_master_read_byte(cmd, st, ACK_VAL); //[Status] A
+		status = read_statusDS2482();
 	}
-	while ((*st & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat until 1WB bit has changed to 0
-	i2c_master_read_byte(cmd, st, NACK_VAL); //[Status] notA
-	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
-	switch(ret){
-		case ESP_OK:
-			//printf("[DS2482_search_triplet()] - *st = %d \n", *st);
-			break;
-		case ESP_ERR_INVALID_ARG:
-			printf("[DS2482_search_triplet()] - Parameter error (2) \n");
-			break;
-		case ESP_FAIL:
-			printf("[DS2482_search_triplet()] - Sending command error, slave doesn`t ACK the transfer \n");
-			break;
-		case ESP_ERR_INVALID_STATE:
-			printf("[DS2482_search_triplet()] - i2c driver not installed or not in master mode \n");
-			break;
-			printf("[DS2482_search_triplet()] - Operation timeout because the bus is busy \n");
-		default:
-			printf("[DS2482_search_triplet()] - default block");
-	}
+	while ((status & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat until 1WB bit has changed to 0  --  && (poll_count++ < POLL_LIMIT)
+	
+	status = read_statusDS2482();
 	
 	if(poll_count >= POLL_LIMIT)
 	{
-		printf("[DS2482_search_triplet()] - POLL_LIMIT");
+		printf("[DS2482_search_triplet()] - POLL_LIMIT\n");
 		DS2482_reset();
 		return 0;
 	}
+	
+	//printf("[DS2482_search_triplet()] - status = %d\n", status);
 	return status;
 }
 
 
 
+uint8_t OWFirst()
+{
+	LastDiscrepancy = 0;
+	LastDeviceFlag = 0;
+	LastFamilyDiscrepancy = 0;
+	return OWSearch();
+}
 
 
+uint8_t OWNext()
+{
+	return OWSearch();
+}
 
 
 

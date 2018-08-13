@@ -12,7 +12,7 @@
 #include "i2c_set.h"
 
 #define DS2482_ADDR			0x18		/* slave address for DS2482 bridge*/
-#define POLL_LIMIT			30
+#define POLL_LIMIT			3000
 
 
 
@@ -214,6 +214,9 @@ uint8_t DS2482_search_triplet(uint8_t search_direction);
 uint8_t calc_crc8(uint8_t value);
 
 
+uint8_t OWFirst(void);
+
+uint8_t OWNext(void);
 
 
 /**
