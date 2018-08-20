@@ -24,7 +24,7 @@ Autor: zip1982b
 #include "ds2482.h"
 
 
-SemaphoreHandle_t i2c_mux = NULL; // access to i2c
+
 
 /* 	
 	cr	- clockwise rotation
@@ -35,9 +35,13 @@ enum action{cr, ccr, bp};
 
 portBASE_TYPE xStatusOLED;
 portBASE_TYPE xStatusReadTemp; // status task create
+portBASE_TYPE xStatusI2C_Worker; 
+
 
 xTaskHandle xDisplay_Handle;
 xTaskHandle xRead_Temp_Handle; // identification Read Temp task
+xTaskHandle xI2C_Worker_Handle;
+
 
 static xQueueHandle gpio_evt_queue = NULL;
 static xQueueHandle ENC_queue = NULL;
@@ -178,10 +182,8 @@ void vDisplay(void *pvParameter)
 		press_button = 0;	
 		if(change)
 		{
-			xSemaphoreTake(i2c_mux, portMAX_DELAY);
 			vDrawMenu(menuitem, state, selectRelay, temp, contrast, chip_info);
 			change = 0;
-			xSemaphoreGive(i2c_mux);
 		}
 	/***** Read Encoder ***********************/
 		xStatusReceive = xQueueReceive(ENC_queue, &rotate, 300/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
@@ -598,7 +600,6 @@ static void vReadTemp(void* arg)
 
 	vTaskDelay(5000 / portTICK_RATE_MS);
 	
-	xSemaphoreTake(i2c_mux, portMAX_DELAY);
 	if(DS2482_detect())
 	{
 		/*ds2482 i2c/1-wire bridge detected*/
@@ -646,12 +647,12 @@ static void vReadTemp(void* arg)
 	}
 	else
 		printf("ds2482 i2c/1-wire bridge not detected\n");
-	xSemaphoreGive(i2c_mux);
+	
 	
 	while(1)
 	{
 		vTaskDelay(3000 / portTICK_RATE_MS);
-		xSemaphoreTake(i2c_mux, portMAX_DELAY);
+		
 		printf("**********************Cycle**********************************\n");
 		if(OWReset() && !short_detected && sensors > 0)
 		{
@@ -724,7 +725,7 @@ static void vReadTemp(void* arg)
 		}
 		else
 			printf("1-wire device not detected(1) or sensors = 0 or short_detected = %d\n", short_detected);
-		xSemaphoreGive(i2c_mux);
+		
 	}
 	vTaskDelete(NULL);
 }
@@ -734,7 +735,6 @@ void app_main()
 {
 	printf("Project - Termostat\n");
 	
-	i2c_mux = xSemaphoreCreateMutex();
 	
 	/*** GPIO init ***/
 	gpio_config_t io_conf;
@@ -779,7 +779,7 @@ void app_main()
     //start gpio task
     xTaskCreate(ENC, "ENC", 1548, NULL, 10, NULL);
 	
-	ENC_queue = xQueueCreate(10, sizeof(uint32_t));
+	ENC_queue = xQueueCreate(13, sizeof(uint32_t));
 	
 	//install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
@@ -793,21 +793,24 @@ void app_main()
 	
 	i2c_master_init();
 	
-	if(i2c_mux){
-		xStatusOLED = xTaskCreate(vDisplay, "vDisplay", 1024 * 2, NULL, 10, &xDisplay_Handle);
-		if(xStatusOLED == pdPASS)
-			printf("Task vDisplay is created!\n");
-		else
-			printf("Task vDisplay is not created\n");
-		
-		
-		xStatusReadTemp = xTaskCreate(vReadTemp, "vReadTemp", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
-		if(xStatusReadTemp == pdPASS)
-			printf("Task vReadTemp is created!\n");
-		else
-			printf("Task vReadTemp is not created\n");
-	}
+	
+	xStatusOLED = xTaskCreate(vDisplay, "Display", 1024 * 2, NULL, 11, &xDisplay_Handle);
+	if(xStatusOLED == pdPASS)
+		printf("Task Display is created!\n");
 	else
-		printf("mutex (i2c_mux) is not created\n");
+		printf("Task Display is not created\n");
+		
+		
+	xStatusReadTemp = xTaskCreate(vReadTemp, "ReadTemp", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
+	if(xStatusReadTemp == pdPASS)
+		printf("Task ReadTemp is created!\n");
+	else
+		printf("Task ReadTemp is not created\n");
+	
+	xStatusI2C_Worker = xTaskCreate(vI2C_Worker, "I2C_Worker", 1024 * 2, NULL, 12, &xI2C_Worker_Handle);
+	if(xStatusI2C_Worker == pdPASS)
+		printf("Task I2C_Worker is created!\n");
+	else
+		printf("Task I2C_Worker is not created\n");
 }
 
