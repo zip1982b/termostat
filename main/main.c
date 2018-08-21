@@ -24,6 +24,28 @@ Autor: zip1982b
 #include "ds2482.h"
 
 
+#define detectDS2482			1
+#define OWR						2
+#define OWWB					3
+#define OWRB					4
+#define DS2482_s_t				5
+
+
+
+//  Source
+#define Display					1
+#define ReadTemp				2
+
+/* data type xI2C_data */
+struct xI2C_data{
+	uint8_t source;
+	uint8_t func;
+	uint8_t param;
+};
+
+struct xI2C_data queueI2Cdata;
+
+
 
 
 /* 	
@@ -45,8 +67,8 @@ xTaskHandle xI2C_Worker_Handle;
 
 static xQueueHandle gpio_evt_queue = NULL;
 static xQueueHandle ENC_queue = NULL;
-
-
+static xQueueHandle send_I2C_queue = NULL;
+static xQueueHandle rcv_I2C_queue = NULL;
 
 
 
@@ -88,7 +110,7 @@ static void ENC(void* arg)
 {
 	
 	enum action rotate;
-	portBASE_TYPE xStatus;
+	//portBASE_TYPE xStatus;
     uint32_t io_num;
     for(;;) {
 		io_num = 0;
@@ -101,7 +123,7 @@ static void ENC(void* arg)
 			{
 				rotate = cr;
 				printf("[ENC]clockwise rotation\n");
-				xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
+				xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);//xStatus = 
 				gpio_set_intr_type(GPIO_ENC_DT, GPIO_INTR_ANYEDGE);//enable
 				
 			}
@@ -118,7 +140,7 @@ static void ENC(void* arg)
 				rotate = ccr;
 				//printf("[ENC]rotate = %d\n", rotate);
 				printf("[ENC]counter clockwise rotation\n");
-				xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
+				xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);//xStatus = 
 				gpio_set_intr_type(GPIO_ENC_CLK, GPIO_INTR_ANYEDGE);
 			}
 				
@@ -129,7 +151,7 @@ static void ENC(void* arg)
 			//printf("[ENC]rotate = %d\n", rotate);
 			printf("[ENC]Button is pressed\n");
 			vTaskDelay(800 / portTICK_RATE_MS);
-			xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
+			xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS); //xStatus = 
 			gpio_set_intr_type(GPIO_ENC_SW, GPIO_INTR_NEGEDGE);//enable
 			
 		}
@@ -168,9 +190,9 @@ void vDisplay(void *pvParameter)
 
 	uint8_t change = 1;
 	
-	xSemaphoreTake(i2c_mux, portMAX_DELAY); 
+	
 	SSD1306_Init();
-	xSemaphoreGive(i2c_mux);
+	
 	
 	uint8_t down_cw;
 	uint8_t up_ccw;
@@ -579,11 +601,13 @@ void vDisplay(void *pvParameter)
 
 static void vReadTemp(void* arg)
 {
+	struct xI2C_data send_data;
+	uint8_t recv_data;
 	/* Find Devices */
-	uint8_t rslt = 0;
+	//uint8_t rslt = 0;
 	
-	uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
-	
+	//uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
+	/*
 	uint8_t i = 0;
 	int j;
 	int k;
@@ -591,30 +615,42 @@ static void vReadTemp(void* arg)
 	int l;
 	
 	uint8_t sensors = 0;
-	
-	uint8_t get[9]; //get scratch pad
-	int temp;
-	float temperatura;
-	
-	
-
+	*/
+	//uint8_t get[9]; //get scratch pad
+	//int temp;
+	//float temperatura;
 	vTaskDelay(5000 / portTICK_RATE_MS);
 	
-	if(DS2482_detect())
-	{
+	
+	portBASE_TYPE xStatus;
+	
+	
+	send_data.source = Display;
+	send_data.func = detectDS2482;
+	//read_temp_data.param
+	
+	xStatus = xQueueSendToBack(send_I2C_queue, &send_data, 100/portTICK_RATE_MS);
+	
+	xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+	printf("[vReadTemp] recv_data = %d\n", recv_data);
+	
+	
+	//if(DS2482_detect())
+	//{
 		/*ds2482 i2c/1-wire bridge detected*/
-		if(OWReset() && !short_detected)
-		{
+		//if(OWReset() && !short_detected)
+		//{
 			/*1-wire device detected*/
 			// find address ALL devices
-			printf("\nFIND ALL ******** \n");
-			rslt = OWFirst();
-			printf("result OWFirst() = %d\n", rslt);
-			while(rslt)
-			{
+			//printf("\nFIND ALL ******** \n");
+			//rslt = OWFirst();
+			//printf("result OWFirst() = %d\n", rslt);
+			//while(rslt)
+			//{
 				//printf("i = %d\n", i);
-				pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
-				sensors++;
+				//pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
+				//sensors++;
+				/*
 				for(j = 7; j >= 0; j--)
 				{
 					*(pROM_NO[i] + j) = ROM_NO[j];
@@ -726,6 +762,37 @@ static void vReadTemp(void* arg)
 		else
 			printf("1-wire device not detected(1) or sensors = 0 or short_detected = %d\n", short_detected);
 		
+	} */
+	vTaskDelete(NULL);
+}
+
+
+void vI2C_Worker(void* arg)
+{
+	portBASE_TYPE xStatus;
+	struct xI2C_data recv_data;
+	uint8_t rslt;
+	while(1)
+	{
+		xStatus = xQueueReceive(send_I2C_queue, &recv_data, 0);
+		if(xStatus == pdPASS)
+		{
+			switch(recv_data.func){
+				case detectDS2482:
+					rslt = DS2482_detect();
+					printf("[vI2C_Worker] rslt = %d\n", rslt);
+					xQueueSendToBack(rcv_I2C_queue, &rslt, portMAX_DELAY); //xStatus = 
+					break;
+				case OWR:
+					rslt = OWReset();
+					break;
+				//case OWWB:
+					//rslt = OWWriteByte(recv_data.param);
+					//break;
+				default:
+					break;
+			}		
+		}
 	}
 	vTaskDelete(NULL);
 }
@@ -793,13 +860,17 @@ void app_main()
 	
 	i2c_master_init();
 	
+	send_I2C_queue = xQueueCreate(5, sizeof(queueI2Cdata));
 	
+	rcv_I2C_queue = xQueueCreate(3, sizeof(uint8_t));
+	
+	/*
 	xStatusOLED = xTaskCreate(vDisplay, "Display", 1024 * 2, NULL, 11, &xDisplay_Handle);
 	if(xStatusOLED == pdPASS)
 		printf("Task Display is created!\n");
 	else
 		printf("Task Display is not created\n");
-		
+	*/	
 		
 	xStatusReadTemp = xTaskCreate(vReadTemp, "ReadTemp", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
 	if(xStatusReadTemp == pdPASS)

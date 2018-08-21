@@ -83,7 +83,7 @@ uint8_t calc_crc8(uint8_t value)
 uint8_t DS2482_reset(void)
 {
 	/*
-	 *S AD,0 [A] DRST [A] P S AD,1 [A] [SS] A\ P 
+	 *S AD,0 [A] DRST [A] S AD,1 [A] [SS] A\ P 
 	*/
 	uint8_t status;
 	
@@ -91,9 +91,10 @@ uint8_t DS2482_reset(void)
 	i2c_master_start(cmd); //S
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
 	i2c_master_write_byte(cmd, CMD_DRST, ACK_CHECK_EN); //DRST - [A]
-	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
+	//i2c_master_stop(cmd); // P
+	//esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	//i2c_cmd_link_delete(cmd);
+	/*
 	switch(ret){
 		case ESP_OK:
 			printf("[DS2482_reset()] - CMD_DRST = OK \n");
@@ -114,12 +115,13 @@ uint8_t DS2482_reset(void)
 			printf("[DS2482_reset()] - default block");
 			return 0;
 	}
-	cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd); //S
+	*/
+	//cmd = i2c_cmd_link_create();
+	i2c_master_start(cmd); //Sr
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
 	i2c_master_read_byte(cmd, &status, NACK_VAL); // [SS] - notA
 	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -152,7 +154,7 @@ uint8_t DS2482_reset(void)
 uint8_t DS2482_write_config(uint8_t config)
 {
 	/*
-	 * S AD,0 [A] WCFG [A] CF [A] P S AD,1 [A] [CF] A\ P
+	 * S AD,0 [A] WCFG [A] CF [A] Sr AD,1 [A] [CF] A\ P
 	*/
 	uint8_t read_config;
 	uint8_t tmp;
@@ -166,9 +168,10 @@ uint8_t DS2482_write_config(uint8_t config)
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
 	i2c_master_write_byte(cmd, CMD_WCFG, ACK_CHECK_EN); //WCFG - [A]
 	i2c_master_write_byte(cmd, reg_config, ACK_CHECK_EN); //CF - [A]
-	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
+	//i2c_master_stop(cmd); // P
+	//esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	//i2c_cmd_link_delete(cmd);
+	/*
 	switch(ret){
 		case ESP_OK:
 			printf("[DS2482_write_config()] - WCFG and CF = OK \n");
@@ -188,13 +191,13 @@ uint8_t DS2482_write_config(uint8_t config)
 		default:
 			printf("[DS2482_write_config()] - default block");
 			return 0;
-	}
-	cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd); //S
+	} */
+	//cmd = i2c_cmd_link_create();
+	i2c_master_start(cmd); //Sr
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
 	i2c_master_read_byte(cmd, &read_config, NACK_VAL); // [CF] - notA
 	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
