@@ -23,7 +23,7 @@ Autor: zip1982b
 #include "ssd1306.h"
 #include "ds2482.h"
 
-
+// Func
 #define detectDS2482			1
 #define OWR						2
 #define OWWB					3
@@ -36,16 +36,19 @@ Autor: zip1982b
 #define Display					1
 #define ReadTemp				2
 
-/* data type xI2C_data */
-struct xI2C_data{
-	uint8_t source;
-	uint8_t func;
-	uint8_t param;
+/* data type xDataSendTo_I2C */
+struct xDataSendTo_I2C{
+	uint8_t source; //Display or ReadTemp
+	uint8_t func;	// detectDS2482, OWR, OWWB and etc..
+	uint8_t param;	// 
 };
+struct xDataSendTo_I2C queueI2CdataSend;
 
-struct xI2C_data queueI2Cdata;
-
-
+struct xDataRcvFrom_I2C{
+	uint8_t func;
+	uint8_t rslt;
+};
+struct xDataRcvFrom_I2C queueI2CdataRecv;
 
 
 /* 	
@@ -601,8 +604,9 @@ void vDisplay(void *pvParameter)
 
 static void vReadTemp(void* arg)
 {
-	struct xI2C_data send_data;
-	uint8_t recv_data;
+	struct xDataSendTo_I2C send_data;
+	struct xDataRcvFrom_I2C recv_data;
+	
 	/* Find Devices */
 	//uint8_t rslt = 0;
 	
@@ -624,15 +628,35 @@ static void vReadTemp(void* arg)
 	
 	portBASE_TYPE xStatus;
 	
-	
-	send_data.source = Display;
+	/***** Detecting DS2482-100 *****/
+	send_data.source = ReadTemp;
 	send_data.func = detectDS2482;
-	//read_temp_data.param
-	
+	//read_temp_data.param = ......
 	xStatus = xQueueSendToBack(send_I2C_queue, &send_data, 100/portTICK_RATE_MS);
+	if(xStatus == pdPASS){
+		xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+		printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+		if(recv_data.rslt){
+			/***** Detected DS2482-100 *****/
+			send_data.func = OWR;
+			xStatus = xQueueSendToBack(send_I2C_queue, &send_data, 100/portTICK_RATE_MS);
+			if(xStatus == pdPASS){
+				xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+				printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+			}
+			
+		}
+		else
+			printf("[vReadTemp] ds2482 i2c/1-wire bridge not detected\n");
+			
+		
+	}
+	else
+		printf("[vReadTemp] The send operation was not successful (1)\n");
 	
-	xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
-	printf("[vReadTemp] recv_data = %d\n", recv_data);
+	
+	
+	
 	
 	
 	//if(DS2482_detect())
@@ -770,21 +794,27 @@ static void vReadTemp(void* arg)
 void vI2C_Worker(void* arg)
 {
 	portBASE_TYPE xStatus;
-	struct xI2C_data recv_data;
-	uint8_t rslt;
+	struct xDataSendTo_I2C recv_data;
+	struct xDataRcvFrom_I2C send_data;
+
 	while(1)
 	{
 		xStatus = xQueueReceive(send_I2C_queue, &recv_data, 0);
 		if(xStatus == pdPASS)
 		{
+			//printf("[vI2C_Worker]sourse = %d, func = %d, param = %d\n", recv_data.source, recv_data.func, recv_data.param);
 			switch(recv_data.func){
 				case detectDS2482:
-					rslt = DS2482_detect();
-					printf("[vI2C_Worker] rslt = %d\n", rslt);
-					xQueueSendToBack(rcv_I2C_queue, &rslt, portMAX_DELAY); //xStatus = 
+					send_data.rslt = DS2482_detect();
+					printf("[vI2C_Worker] rslt = %d\n", send_data.rslt);
+					send_data.func = recv_data.func;
+					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
 					break;
 				case OWR:
-					rslt = OWReset();
+					send_data.rslt = OWReset();
+					printf("[vI2C_Worker] rslt = %d\n", send_data.rslt);
+					send_data.func = recv_data.func;
+					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
 					break;
 				//case OWWB:
 					//rslt = OWWriteByte(recv_data.param);
@@ -860,9 +890,9 @@ void app_main()
 	
 	i2c_master_init();
 	
-	send_I2C_queue = xQueueCreate(5, sizeof(queueI2Cdata));
+	send_I2C_queue = xQueueCreate(5, sizeof(queueI2CdataSend));
 	
-	rcv_I2C_queue = xQueueCreate(3, sizeof(uint8_t));
+	rcv_I2C_queue = xQueueCreate(3, sizeof(queueI2CdataRecv));
 	
 	/*
 	xStatusOLED = xTaskCreate(vDisplay, "Display", 1024 * 2, NULL, 11, &xDisplay_Handle);
