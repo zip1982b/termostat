@@ -125,7 +125,7 @@ uint8_t OWReset(void);
 * 		0: 0 bit read from sendbit
 * 		1: 1 bit read from sendbit
 */
-uint8_t OWTouchBit(uint8_t sendbit);
+//uint8_t OWTouchBit(uint8_t sendbit);
 
 
 
@@ -136,7 +136,7 @@ uint8_t OWTouchBit(uint8_t sendbit);
 * @param uint8_t sendbit - least significant bit is used.
 * @return OWTouchBit(sendbit)
 */
-void OWWriteBit(uint8_t sendbit);
+//void OWWriteBit(uint8_t sendbit);
 
 
 
@@ -146,7 +146,7 @@ void OWWriteBit(uint8_t sendbit);
 * @param void.
 * @return OWTouchBit(0x01)
 */
-uint8_t OWReadBit(void);
+//uint8_t OWReadBit(void);
 
 
 
@@ -161,7 +161,7 @@ uint8_t OWReadBit(void);
 * 		1: bytes written and echo was the same
 * 		0: echo was not the same
 */
-void OWWriteByte(uint8_t sendbyte);
+uint8_t OWWriteByte(uint8_t sendbyte);
 
 
 
@@ -219,9 +219,6 @@ uint8_t DS2482_search_triplet(uint8_t search_direction);
 uint8_t calc_crc8(uint8_t value);
 
 
-uint8_t OWFirst(void);
-
-uint8_t OWNext(void);
 
 
 /**
@@ -244,7 +241,7 @@ uint8_t OWSearch(void);
 * 			1: device found, ROM number in ROM_NO buffer.
 * 			0: no device present.
 */
-//uint8_t OWFirst(void);
+uint8_t OWFirst(void);
 
 
 
@@ -256,7 +253,9 @@ uint8_t OWSearch(void);
 * 			1: device found, ROM number in ROM_NO buffer.
 * 			0: device not found, end of search.
 */
-//uint8_t OWNext(void);
+uint8_t OWNext(void);
 
+
+void SetDS18B20(void);
 
 #endif

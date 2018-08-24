@@ -27,10 +27,11 @@ Autor: zip1982b
 #define detectDS2482			1
 #define OWR						2
 #define OWWB					3
-#define OWRB					4
+#define OWRB					4	/* OWReadByte() */
 #define DS2482_s_t				5
-
-
+#define OWF						6	/* OWFirst */
+#define OWN						7	/* OWNext() */
+#define SetTempSensor			8	/* SetDS18B20() */
 
 //  Source
 #define Display					1
@@ -608,10 +609,9 @@ static void vReadTemp(void* arg)
 	struct xDataRcvFrom_I2C recv_data;
 	
 	/* Find Devices */
-	//uint8_t rslt = 0;
 	
-	//uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
-	/*
+	uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
+	
 	uint8_t i = 0;
 	int j;
 	int k;
@@ -619,10 +619,12 @@ static void vReadTemp(void* arg)
 	int l;
 	
 	uint8_t sensors = 0;
-	*/
-	//uint8_t get[9]; //get scratch pad
-	//int temp;
-	//float temperatura;
+	
+	uint8_t get[9]; //get scratch pad
+	int temp;
+	float temperatura;
+	
+	
 	vTaskDelay(5000 / portTICK_RATE_MS);
 	
 	
@@ -643,150 +645,165 @@ static void vReadTemp(void* arg)
 			if(xStatus == pdPASS){
 				xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
 				printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+				if(recv_data.rslt && !short_detected){
+					printf("\nFIND ALL ******** \n");
+					send_data.func = OWF;
+					xStatus = xQueueSendToBack(send_I2C_queue, &send_data, 100/portTICK_RATE_MS);
+					if(xStatus == pdPASS){
+						xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+						printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+						while(recv_data.rslt)
+						{
+							printf("i = %d\n", i);
+							pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
+							sensors++;
+							
+							for(j = 7; j >= 0; j--)
+							{
+								*(pROM_NO[i] + j) = ROM_NO[j];
+								printf("%02X", *(pROM_NO[i] + j));
+							}
+							printf("\nSensor# %d\n", i + 1);
+							i++;
+							
+							send_data.func = OWN;
+							xStatus = xQueueSendToBack(send_I2C_queue, &send_data, 100/portTICK_RATE_MS);
+							if(xStatus == pdPASS){
+								xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+								printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+							}
+						}
+						printf("number of sensors = %d\n", sensors);
+						printf("1-wire device end find\n");
+						send_data.func = SetTempSensor;
+						xStatus = xQueueSendToBack(send_I2C_queue, &send_data, 100/portTICK_RATE_MS);
+						
+					}
+				}
 			}
 			
 		}
 		else
 			printf("[vReadTemp] ds2482 i2c/1-wire bridge not detected\n");
-			
-		
 	}
 	else
 		printf("[vReadTemp] The send operation was not successful (1)\n");
 	
-	
-	
-	
-	
-	
-	//if(DS2482_detect())
-	//{
-		/*ds2482 i2c/1-wire bridge detected*/
-		//if(OWReset() && !short_detected)
-		//{
-			/*1-wire device detected*/
-			// find address ALL devices
-			//printf("\nFIND ALL ******** \n");
-			//rslt = OWFirst();
-			//printf("result OWFirst() = %d\n", rslt);
-			//while(rslt)
-			//{
-				//printf("i = %d\n", i);
-				//pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
-				//sensors++;
-				/*
-				for(j = 7; j >= 0; j--)
-				{
-					*(pROM_NO[i] + j) = ROM_NO[j];
-					printf("%02X", *(pROM_NO[i] + j));
-				}
-				printf("\nSensor# %d\n", i + 1);
-				i++;
-				rslt = OWNext();
-				printf("result OWNext() = %d\n", rslt);
-			}
-			printf("sensors = %d\n", sensors);
-			printf("1-wire device end find\n");
 			
-			vTaskDelay(100 / portTICK_RATE_MS);
-			OWWriteByte(SkipROM); //0xCC
-			printf("SkipROM\n");
-			OWWriteByte(WriteScratchpad); //0x4E
-			printf("WriteScratchpad\n");
-			OWWriteByte(0x4B); //TH
-			printf("TH = 0x4B\n");
-			OWWriteByte(0x46); //TL
-			printf("TL = 0x46\n");
-			OWWriteByte(0x7F); //Config register
-			printf("Config = 0x7F - 12 bit\n");
-		}
-		else
-			printf("1-wire device not detected (1) or short_detected = %d\n", short_detected);
+			
+			
 		
-		
-	}
-	else
-		printf("ds2482 i2c/1-wire bridge not detected\n");
-	
 	
 	while(1)
 	{
-		vTaskDelay(3000 / portTICK_RATE_MS);
-		
-		printf("**********************Cycle**********************************\n");
-		if(OWReset() && !short_detected && sensors > 0)
-		{
-			vTaskDelay(50 / portTICK_RATE_MS);
-			OWWriteByte(SkipROM); //0xCC - пропуск проверки адресов
-			printf("SkipROM\n");
-			OWWriteByte(ConvertT); //0x44 - все датчики измеряют свою температуру
-			printf("ConvertT\n");
-			
-			
-			for(l = 0; l < sensors; l++)
-			{
-				crc8 = 0;
-				if(OWReset() && !short_detected)
-				{
-					vTaskDelay(50 / portTICK_RATE_MS);
-					OWWriteByte(MatchROM); //0x55 - соответствие адреса
-					printf("send MatchROM command\n");
-					// send ROM address = 64 bit
-					for(k = 0; k <= 7; k++)
-					{
-						//printf(" %X ", *(pROM_NO[l] + k));
-						OWWriteByte(*(pROM_NO[l] + k));
-					}
-					OWWriteByte(ReadScratchpad); //0xBE
-					printf("\n send ReadScratchpad command \n");
-					for (n=0; n<9; n++)
-					{
-						get[n] = OWReadByte();
-						//printf("get[%d] = %X\n", n, get[n]);
-								
-						//get[8] не надо проверять crc
-						if(n < 8)
-						{
-							calc_crc8(get[n]); // accumulate the CRC
-							//printf("crc8 = %X\n", crc8);
+		vTaskDelay(1000 / portTICK_RATE_MS);
+		printf("*****Cycle - temperature measurement *****\n");
+		printf("*****1 Wire reset command *****\n");
+		send_data.func = OWR;
+		xStatus = xQueueSendToBack(send_I2C_queue, &send_data, portMAX_DELAY);
+		if(xStatus == pdPASS){
+			xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+			printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+			if(recv_data.rslt && !short_detected && sensors > 0){
+				send_data.func = OWWB;
+				send_data.param = SkipROM;
+				xStatus = xQueueSendToBack(send_I2C_queue, &send_data, portMAX_DELAY);
+				if(xStatus == pdPASS){
+					printf("send SkipROM command\n");
+					xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+					printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+					if(recv_data.rslt){
+						send_data.func = OWWB;
+						send_data.param = ConvertT;
+						xStatus = xQueueSendToBack(send_I2C_queue, &send_data, portMAX_DELAY);
+						if(xStatus == pdPASS){
+							printf("send ConvertT command\n");
+							xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+							printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+							if(recv_data.rslt){
+								for(l = 0; l < sensors; l++){
+									crc8 = 0;
+									send_data.func = OWWB;
+									send_data.param = MatchROM;
+									xStatus = xQueueSendToBack(send_I2C_queue, &send_data, portMAX_DELAY);
+									if(xStatus == pdPASS){
+										printf("send MatchROM command\n");
+										xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+										printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+										if(recv_data.rslt){
+											// send ROM address = 64 bit
+											for(k = 0; k <= 7; k++)
+											{
+												send_data.func = OWWB;
+												send_data.param = *(pROM_NO[l] + k);
+												xStatus = xQueueSendToBack(send_I2C_queue, &send_data, portMAX_DELAY);
+												if(xStatus == pdPASS){
+													xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+													printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+												}
+												
+												//printf(" %X ", *(pROM_NO[l] + k));
+											}
+											send_data.func = OWWB;
+											send_data.param = ReadScratchpad; //0xBE
+											xStatus = xQueueSendToBack(send_I2C_queue, &send_data, portMAX_DELAY);
+											if(xStatus == pdPASS){
+												printf("\n send ReadScratchpad command \n");
+											}
+											for (n=0; n<9; n++)
+											{
+												send_data.func = OWRB;
+												xStatus = xQueueSendToBack(send_I2C_queue, &send_data, portMAX_DELAY);
+												if(xStatus == pdPASS){
+													xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+													printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+													get[n] = recv_data.rslt;
+													printf("get[%d] = %X\n", n, get[n]);
+												}
+														
+												//get[8] не надо проверять crc
+												if(n < 8)
+												{
+													calc_crc8(get[n]); // accumulate the CRC
+													//printf("crc8 = %X\n", crc8);
+												}
+												else if(get[8] == crc8)
+													printf("crc = OK\n");
+												else
+												{
+													printf("crc = NOK\n");
+												}
+											}
+											printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
+											// -
+											if(getbits(get[1], 7, 1))
+											{
+												temp = get[1] << 8 | get[0];
+												temp = (~temp) + 1;
+												temperatura = (temp * 0.0625) * (-1);
+												printf("temp = %f *C\n", temperatura);
+											}
+											// +
+											else 
+											{
+												temp = get[1] << 8 | get[0];
+												temperatura = temp * 0.0625;
+												printf("temp = %f *C\n", temperatura);
+											}
+										}
+									}
+									
+								}
+							}
+							
 						}
-						else if(get[8] == crc8)
-							printf("crc = OK\n");
-						else
-						{
-							printf("crc = NOK\n");
-						}
-					}
-					printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
-					// расчёт температуры
-					//temp_msb = get[1]; 
-					//temp_lsb = get[0];
 					
-					// -
-					if(getbits(get[1], 7, 1))
-					{
-						temp = get[1] << 8 | get[0];
-						temp = (~temp) + 1;
-						temperatura = (temp * 0.0625) * (-1);
-						printf("temp = %f *C\n", temperatura);
 					}
-					// +
-					else 
-					{
-						temp = get[1] << 8 | get[0];
-						temperatura = temp * 0.0625;
-						printf("temp = %f *C\n", temperatura);
-					}
-						
 				}
-				else
-					printf("1-wire device not detected(2) or short_detected = %d\n", short_detected);
 			}
 		}
-		else
-			printf("1-wire device not detected(1) or sensors = 0 or short_detected = %d\n", short_detected);
-		
-	} */
+		vTaskDelay(3000 / portTICK_RATE_MS);
+	} 
 	vTaskDelete(NULL);
 }
 
@@ -796,7 +813,7 @@ void vI2C_Worker(void* arg)
 	portBASE_TYPE xStatus;
 	struct xDataSendTo_I2C recv_data;
 	struct xDataRcvFrom_I2C send_data;
-
+	i2c_master_init();
 	while(1)
 	{
 		xStatus = xQueueReceive(send_I2C_queue, &recv_data, 0);
@@ -816,9 +833,33 @@ void vI2C_Worker(void* arg)
 					send_data.func = recv_data.func;
 					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
 					break;
-				//case OWWB:
-					//rslt = OWWriteByte(recv_data.param);
-					//break;
+				case OWF:
+					send_data.rslt = OWFirst();
+					printf("[vI2C_Worker] OWFirst() rslt = %d\n", send_data.rslt);
+					send_data.func = recv_data.func;
+					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
+					break;
+				case OWN:
+					send_data.rslt = OWNext();
+					printf("[vI2C_Worker] OWNext() rslt = %d\n", send_data.rslt);
+					send_data.func = recv_data.func;
+					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
+					break;
+				case OWWB:
+					printf("[vI2C_Worker] OWWriteByte() param = %d\n", recv_data.param);
+					send_data.rslt = OWWriteByte(recv_data.param);
+					send_data.func = recv_data.func;
+					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY);
+					break;
+				case SetTempSensor:
+					SetDS18B20();
+					break;
+				case OWRB:
+					send_data.rslt = OWReadByte();
+					printf("[vI2C_Worker] OWReadByte() rslt = %d\n", send_data.rslt);
+					send_data.func = recv_data.func;
+					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
+					break;
 				default:
 					break;
 			}		
@@ -888,11 +929,11 @@ void app_main()
     gpio_isr_handler_add(GPIO_ENC_SW, gpio_isr_handler, (void*) GPIO_ENC_SW);
 	
 	
-	i2c_master_init();
 	
-	send_I2C_queue = xQueueCreate(5, sizeof(queueI2CdataSend));
 	
-	rcv_I2C_queue = xQueueCreate(3, sizeof(queueI2CdataRecv));
+	send_I2C_queue = xQueueCreate(9, sizeof(queueI2CdataSend));
+	
+	rcv_I2C_queue = xQueueCreate(9, sizeof(queueI2CdataRecv));
 	
 	/*
 	xStatusOLED = xTaskCreate(vDisplay, "Display", 1024 * 2, NULL, 11, &xDisplay_Handle);
@@ -902,7 +943,7 @@ void app_main()
 		printf("Task Display is not created\n");
 	*/	
 		
-	xStatusReadTemp = xTaskCreate(vReadTemp, "ReadTemp", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
+	xStatusReadTemp = xTaskCreate(vReadTemp, "ReadTemp", 1024 * 4, NULL, 10, &xRead_Temp_Handle);
 	if(xStatusReadTemp == pdPASS)
 		printf("Task ReadTemp is created!\n");
 	else

@@ -258,6 +258,7 @@ uint8_t OWReset(void)
 			printf("[OWReset()] - default block");
 			return 0;
 	}
+	
 	do
 	{
 		status = read_statusDS2482();
@@ -295,116 +296,15 @@ uint8_t OWReset(void)
 
 
 
-uint8_t OWTouchBit(uint8_t sendbit)
-{
-	/*
-	 * S AD,0 [A] 1WSB [A] BB [A] P S AD,1 [A] [Status] A [Status] A\ P
-	 *											\--------/
-	 *							Repeat until 1WB bit has changed to 0
-	 * BB indicates byte containing bit value in msbit
-	*/
-	uint8_t status = 0;
-	uint8_t *st;
-	int poll_count = 0;
-	
-	st = &status;
-	
-	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd);  //S
-	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
-	i2c_master_write_byte(cmd, CMD_1WSB, ACK_CHECK_EN); //1WSB - [A]
-	i2c_master_write_byte(cmd, sendbit ? 0x80 : 0x00, ACK_CHECK_EN); //BB - [A]
-	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
-	switch(ret){
-		case ESP_OK:
-			printf("[OWTouchBit()] - CMD_1WSB = OK \n");
-			break;
-		case ESP_ERR_INVALID_ARG:
-			printf("[OWTouchBit()] - Parameter error (1) \n");
-			return 0;
-		case ESP_FAIL:
-			printf("[OWTouchBit()] - Sending command error, slave doesn`t ACK the transfer \n");
-			return 0;
-		case ESP_ERR_INVALID_STATE:
-			printf("[OWTouchBit()] - i2c driver not installed or not in master mode \n");
-			return 0;
-		case ESP_ERR_TIMEOUT:
-			printf("[OWTouchBit()] - Operation timeout because the bus is busy \n");
-			return 0;
-		default:
-			printf("[OWTouchBit()] - default block");
-			return 0;
-	}
-	cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd); //S
-	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
-	do
-	{
-		i2c_master_read_byte(cmd, st, ACK_VAL); //[Status] A
-	}
-	while ((*st & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat until 1WB bit has changed to 0
-	i2c_master_read_byte(cmd, st, NACK_VAL); //[Status] notA
-	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
-	switch(ret){
-		case ESP_OK:
-			printf("[OWTouchBit()] - *st = %d \n", *st);
-			break;
-		case ESP_ERR_INVALID_ARG:
-			printf("[OWTouchBit()] - Parameter error (2) \n");
-			return 0;
-		case ESP_FAIL:
-			printf("[OWTouchBit()] - Sending command error, slave doesn`t ACK the transfer \n");
-			return 0;
-		case ESP_ERR_INVALID_STATE:
-			printf("[OWTouchBit()] - i2c driver not installed or not in master mode \n");
-			return 0;
-		case ESP_ERR_TIMEOUT:
-			printf("[OWTouchBit()] - Operation timeout because the bus is busy \n");
-			return 0;
-		default:
-			printf("[OWTouchBit()] - default block");
-			return 0;
-	}
-	
-	if(poll_count >= POLL_LIMIT)
-	{
-		DS2482_reset();
-		return 0;
-	}
-	
-	if(*st & STATUS_SBR)
-		return 1;
-	else
-		return 0;
-}
 
 
 
 
-void OWWriteBit(uint8_t sendbit)
-{
-	OWTouchBit(sendbit);
-}
-
-
-uint8_t OWReadBit(void)
-{
-	return OWTouchBit(0x01);
-}
-
-
-
-
-
-void OWWriteByte(uint8_t sendbyte)
+uint8_t OWWriteByte(uint8_t sendbyte)
 {
 	/**
-	* S AD,0 [A] 1WWB [A] DD [A] P S AD,1 [A] [Status] A [Status] A\ P
-	*										  \---------/
+	* S AD,0 [A] 1WWB [A] DD [A] Sr AD,1 [A] [Status] A [Status] A\ P
+	*										 \-------/
 	*								Repeat until 1WB bit has changed to 0
 	* DD data to write
 	*/
@@ -417,82 +317,69 @@ void OWWriteByte(uint8_t sendbyte)
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
 	i2c_master_write_byte(cmd, CMD_1WWB, ACK_CHECK_EN); //1WWB - [A]
 	i2c_master_write_byte(cmd, sendbyte, ACK_CHECK_EN); //DD - [A]
-	//i2c_master_stop(cmd); // P
-	//esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	//i2c_cmd_link_delete(cmd);
-	/*
+	i2c_master_stop(cmd); // P
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	i2c_cmd_link_delete(cmd);
+	
 	switch(ret){
 		case ESP_OK:
 			printf("[OWWriteByte()] - CMD_1WWB = OK \n");
 			break;
 		case ESP_ERR_INVALID_ARG:
 			printf("[OWWriteByte()] - Parameter error (1) \n");
+			return 0;
 			break;
 		case ESP_FAIL:
 			printf("[OWWriteByte()] - Sending command error, slave doesn`t ACK the transfer 1\n");
+			return 0;
 			break;
 		case ESP_ERR_INVALID_STATE:
 			printf("[OWWriteByte()] - i2c driver not installed or not in master mode \n");
+			return 0;
 			break;
 		case ESP_ERR_TIMEOUT:
 			printf("[OWWriteByte()] - Operation timeout because the bus is busy \n");
+			return 0;
 			break;
 		default:
 			printf("[OWWriteByte()] - default block\n");
 	}
-	*/
-	//vTaskDelay(30 / portTICK_RATE_MS);
-	//cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd); //S
-	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
+	
 	do
 	{
-		i2c_master_read_byte(cmd, &status, ACK_VAL); //[Status] A
+		status = read_statusDS2482();
+		printf("[OWWriteByte() while] - status = %d\n", status);
 	}
-	while ((status & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat until 1WB bit has changed to 0
-	i2c_master_read_byte(cmd, &status, NACK_VAL); //[Status] notA
-	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
-	switch(ret){
-		case ESP_OK:
-			printf("[OWWriteByte()] - status = %d \n", status);
-			break;
-		case ESP_ERR_INVALID_ARG:
-			printf("[OWWriteByte()] - Parameter error (2) \n");
-			break;
-		case ESP_FAIL:
-			printf("[OWWriteByte()] - Sending command error, slave doesn`t ACK the transfer 2\n");
-			break;
-		case ESP_ERR_INVALID_STATE:
-			printf("[OWWriteByte()] - i2c driver not installed or not in master mode \n");
-			break;
-		case ESP_ERR_TIMEOUT:
-			printf("[OWWriteByte()] - Operation timeout because the bus is busy \n");
-			break;
-		default:
-			printf("[OWWriteByte()] - default block");
-	}
+	while ((status & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat untill 1WB bit has changed to 0
+	status = read_statusDS2482(); //[Status] notA
+	printf("[OWWriteByte()] - status = %d \n", status);
 	
 	if(poll_count >= POLL_LIMIT)
 	{
+		printf("[OWWriteByte()] - POLL_LIMIT, DS2482_reset()\n");
 		DS2482_reset();
+		return 0;
 	}
+	
+	return 1;
 }
 
 
-//Case A
+
+
+//Case C
+
 uint8_t OWReadByte(void)
-{
+{ 
 	/*
-	* S AD,0 [A] 1WRB [A] P -idle- S AD,0 [A] SRP [A] E1 [A] S AD,1 [A] DD A\ P
-	* 								 
-	*						
+	* S AD,0 [A] 1WRB [A] P     S AD,1 [A] [Status] A [Status] A\ P    S AD,0 [A] SRP [A] E1 [A] Sr AD,1 [A] DD A\ P
+	* 								 		\--------/
+	*						Repeat until 1WB bit has changed to 0
 	* DD - read data
-	*
-	*
-	*
 	*/
+	
+	uint8_t status;
+	int poll_count = 0;
 	uint8_t data;
 	
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
@@ -504,7 +391,7 @@ uint8_t OWReadByte(void)
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
-			//printf("[OWReadByte()] - CMD_1WRB = OK \n");
+			printf("[OWReadByte()] - CMD_1WRB = OK \n");
 			break;
 		case ESP_ERR_INVALID_ARG:
 			printf("[OWReadByte()] - Parameter error (1) \n");
@@ -521,95 +408,39 @@ uint8_t OWReadByte(void)
 		default:
 			printf("[OWReadByte()] - default block\n");
 	}		
-	cmd = i2c_cmd_link_create();		
+	
+	
+	
+	
+	do
+	{
+		status = read_statusDS2482();
+		printf("[OWReadByte() while] - status = %d\n", status);
+	}
+	while ((status & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat untill 1WB bit has changed to 0
+	status = read_statusDS2482(); //[Status] notA
+	printf("[OWReadByte()] - status = %d \n", status);
+	
+	if(poll_count >= POLL_LIMIT)
+	{
+		printf("[OWReadByte()] - POLL_LIMIT, DS2482_reset()\n");
+		DS2482_reset();
+	}
+	
+
+	
+	
+	
 	i2c_master_start(cmd);  //S
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
 	i2c_master_write_byte(cmd, CMD_SRP, ACK_CHECK_EN); //SRP - [A]
 	i2c_master_write_byte(cmd, 0xE1, ACK_CHECK_EN); //E1h - [A]
 	
-	i2c_master_start(cmd);  //S
+	i2c_master_start(cmd);  //Sr
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
 	i2c_master_read_byte(cmd, &data, NACK_VAL); //[DD] notA
 	i2c_master_stop(cmd); // P
 	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
-	i2c_cmd_link_delete(cmd);
-	switch(ret){
-		case ESP_OK:
-			//printf("[OWReadByte()] - data = %d \n", data);
-			break;
-		case ESP_ERR_INVALID_ARG:
-			printf("[OWReadByte()] - Parameter error (2) \n");
-			break;
-		case ESP_FAIL:
-			printf("[OWReadByte()] - Sending command error, slave doesn`t ACK the transfer \n");
-			break;
-		case ESP_ERR_INVALID_STATE:
-			printf("[OWReadByte()] - i2c driver not installed or not in master mode \n");
-			break;
-		case ESP_ERR_TIMEOUT:
-			printf("[OWReadByte()] - Operation timeout because the bus is busy \n");
-			break;
-		default:
-			printf("[OWReadByte()] - default block");
-	}
-	return data;
-}
-
-
-
-
-//Case C
-/*
-uint8_t OWReadByte(void)
-{ */
-	/*
-	* S AD,0 [A] 1WRB [A] S AD,1 [A] [Status] A [Status] A\ S AD,0 [A] SRP [A] E1 [A] S AD,1 [A] DD A\ P
-	* 								  \--------/
-	*						Repeat until 1WB bit has changed to 0
-	* DD - read data
-	*
-	*
-	*
-	*/
-	/*
-	uint8_t status;
-	int poll_count = 0;
-	uint8_t *st;
-	st = &status;
-	uint8_t data;
-	
-	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-	i2c_master_start(cmd);  //S
-	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
-	i2c_master_write_byte(cmd, CMD_1WRB, ACK_CHECK_EN); //1WRB - [A]
-	
-	i2c_master_start(cmd);  //S
-	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
-	do
-	{
-		i2c_master_read_byte(cmd, st, ACK_VAL); //[Status] A
-	}
-	while ((*st & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat until 1WB bit has changed to 0
-	i2c_master_read_byte(cmd, st, NACK_VAL); //[Status] notA
-	
-	if(poll_count >= POLL_LIMIT)
-	{
-		DS2482_reset();
-		return 0;
-	}
-	
-	vTaskDelay(30 / portTICK_RATE_MS);
-	i2c_master_start(cmd);  //S
-	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
-	i2c_master_write_byte(cmd, CMD_SRP, ACK_CHECK_EN); //SRP - [A]
-	i2c_master_write_byte(cmd, 0xE1, ACK_CHECK_EN); //E1h - [A]
-	
-	i2c_master_start(cmd);  //S
-	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
-	i2c_master_read_byte(cmd, &data, NACK_VAL); //[DD] notA
-	
-	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -632,7 +463,9 @@ uint8_t OWReadByte(void)
 	}
 	return data;
 }
-*/
+
+
+
 
 
 /*
@@ -670,7 +503,7 @@ void OWBlock(uint8_t *tran_buf, int tran_len)
 uint8_t DS2482_search_triplet(uint8_t search_direction)
 {
 	/*
-	* S AD,0 [A] 1WT [A] SS [A] P S [A] AD,1 [A] [Status] A [Status] A\ P
+	* S AD,0 [A] 1WT [A] SS [A] Sr [A] AD,1 [A] [Status] A [Status] A\ P
 	*											 \---------/
 	*								Repeat until 1WB bit has changed to 0
 	* SS indicates byte containing search direction bit value in msbit
@@ -885,6 +718,19 @@ uint8_t OWSearch()
 	}
 	
 	return search_result; //False or True
+}
+
+
+void SetDS18B20(){
+	if(OWWriteByte(SkipROM)){
+		if(OWWriteByte(WriteScratchpad)){
+			if(OWWriteByte(0x4B)){
+				if(OWWriteByte(0x46)){
+					OWWriteByte(0x7F);
+				}
+			}
+		}
+	} 
 } 
 
 
