@@ -427,10 +427,7 @@ uint8_t OWReadByte(void)
 		DS2482_reset();
 	}
 	
-
-	
-	
-	
+	cmd = i2c_cmd_link_create();
 	i2c_master_start(cmd);  //S
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
 	i2c_master_write_byte(cmd, CMD_SRP, ACK_CHECK_EN); //SRP - [A]

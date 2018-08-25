@@ -749,47 +749,55 @@ static void vReadTemp(void* arg)
 											xStatus = xQueueSendToBack(send_I2C_queue, &send_data, portMAX_DELAY);
 											if(xStatus == pdPASS){
 												printf("\n send ReadScratchpad command \n");
-											}
-											for (n=0; n<9; n++)
-											{
-												send_data.func = OWRB;
-												xStatus = xQueueSendToBack(send_I2C_queue, &send_data, portMAX_DELAY);
-												if(xStatus == pdPASS){
-													xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
-													printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
-													get[n] = recv_data.rslt;
-													printf("get[%d] = %X\n", n, get[n]);
+												xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+												printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+												if(recv_data.rslt){
+													for (n=0; n<9; n++)
+													{
+														send_data.func = OWRB;
+														send_data.param = 0;
+														send_data.source = ReadTemp;
+														xStatus = xQueueSendToBack(send_I2C_queue, &send_data, portMAX_DELAY);
+														if(xStatus == pdPASS){
+															xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+															printf("[vReadTemp] func = %d, rslt = %d\n", recv_data.func, recv_data.rslt);
+															get[n] = recv_data.rslt;
+															printf("get[%d] = %X\n", n, get[n]);
+														}
+																
+														//get[8] не надо проверять crc
+														if(n < 8)
+														{
+															calc_crc8(get[n]); // accumulate the CRC
+															//printf("crc8 = %X\n", crc8);
+														}
+														else if(get[8] == crc8)
+															printf("crc = OK\n");
+														else
+														{
+															printf("crc = NOK\n");
+														}
+													}
+													printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
+													// -
+													if(getbits(get[1], 7, 1))
+													{
+														temp = get[1] << 8 | get[0];
+														temp = (~temp) + 1;
+														temperatura = (temp * 0.0625) * (-1);
+														printf("temp = %f *C\n", temperatura);
+													}
+													// +
+													else 
+													{
+														temp = get[1] << 8 | get[0];
+														temperatura = temp * 0.0625;
+														printf("temp = %f *C\n", temperatura);
+													}
 												}
-														
-												//get[8] не надо проверять crc
-												if(n < 8)
-												{
-													calc_crc8(get[n]); // accumulate the CRC
-													//printf("crc8 = %X\n", crc8);
-												}
-												else if(get[8] == crc8)
-													printf("crc = OK\n");
-												else
-												{
-													printf("crc = NOK\n");
-												}
+												
 											}
-											printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
-											// -
-											if(getbits(get[1], 7, 1))
-											{
-												temp = get[1] << 8 | get[0];
-												temp = (~temp) + 1;
-												temperatura = (temp * 0.0625) * (-1);
-												printf("temp = %f *C\n", temperatura);
-											}
-											// +
-											else 
-											{
-												temp = get[1] << 8 | get[0];
-												temperatura = temp * 0.0625;
-												printf("temp = %f *C\n", temperatura);
-											}
+											
 										}
 									}
 									
@@ -855,9 +863,9 @@ void vI2C_Worker(void* arg)
 					SetDS18B20();
 					break;
 				case OWRB:
+					send_data.func = recv_data.func;
 					send_data.rslt = OWReadByte();
 					printf("[vI2C_Worker] OWReadByte() rslt = %d\n", send_data.rslt);
-					send_data.func = recv_data.func;
 					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
 					break;
 				default:
@@ -943,7 +951,7 @@ void app_main()
 		printf("Task Display is not created\n");
 	*/	
 		
-	xStatusReadTemp = xTaskCreate(vReadTemp, "ReadTemp", 1024 * 4, NULL, 10, &xRead_Temp_Handle);
+	xStatusReadTemp = xTaskCreate(vReadTemp, "ReadTemp", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
 	if(xStatusReadTemp == pdPASS)
 		printf("Task ReadTemp is created!\n");
 	else
