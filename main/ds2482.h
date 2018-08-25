@@ -52,7 +52,12 @@
 #define ConvertT 			0x44
 #define WriteScratchpad 	0x4E
 
-
+/* data type xDataSendTo_I2C */
+struct xDataSendTo_I2C{
+	uint8_t source; //Display or ReadTemp
+	uint8_t func;	// detectDS2482, OWR, OWWB and etc..
+	uint8_t param;	// 
+};
 
 
 
@@ -257,5 +262,8 @@ uint8_t OWNext(void);
 
 
 void SetDS18B20(void);
+
+portBASE_TYPE SendFuncForI2C_Worker(xQueueHandle queue, uint8_t source, uint8_t func, uint8_t param);
+
 
 #endif

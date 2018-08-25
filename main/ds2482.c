@@ -348,11 +348,11 @@ uint8_t OWWriteByte(uint8_t sendbyte)
 	do
 	{
 		status = read_statusDS2482();
-		printf("[OWWriteByte() while] - status = %d\n", status);
+		//printf("[OWWriteByte() while] - status = %d\n", status);
 	}
 	while ((status & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat untill 1WB bit has changed to 0
 	status = read_statusDS2482(); //[Status] notA
-	printf("[OWWriteByte()] - status = %d \n", status);
+	//printf("[OWWriteByte()] - status = %d \n", status);
 	
 	if(poll_count >= POLL_LIMIT)
 	{
@@ -408,9 +408,6 @@ uint8_t OWReadByte(void)
 		default:
 			printf("[OWReadByte()] - default block\n");
 	}		
-	
-	
-	
 	
 	do
 	{
@@ -731,4 +728,13 @@ void SetDS18B20(){
 } 
 
 
+
+portBASE_TYPE SendFuncForI2C_Worker(xQueueHandle queue, uint8_t source, uint8_t func, uint8_t param)
+{
+	struct xDataSendTo_I2C send_data;
+	send_data.source = source;
+	send_data.func = func;
+	send_data.param = param;
+	return xQueueSendToBack(queue, &send_data, portMAX_DELAY); // 100/portTICK_RATE_MS
+}
 
