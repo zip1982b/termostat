@@ -27,7 +27,7 @@ Autor: zip1982b
 #include "ds2482.h"
 
 // Func
-#define detectDS2482			1
+#define FTS						1
 #define OWR						2
 #define OWWB					3
 #define OWRB					4	/* OWReadByte() */
@@ -617,7 +617,7 @@ static void vReadTemp(void* arg)
 	portBASE_TYPE xStatus;
 	/* Find Devices */
 	
-	uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
+	uint8_t *pROM_NO[5]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
 	
 	uint8_t i = 0;
 	int j;
@@ -635,75 +635,54 @@ static void vReadTemp(void* arg)
 	
 	vTaskDelay(5000 / portTICK_RATE_MS);
 	
-	
-	
-	
-	/***** Detecting DS2482-100 *****/
-	rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, detectDS2482, 0);
+	/***** Find Sensors *****/
+	rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, FTS, 0);
 	if(rslt == pdPASS){
 		xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
-		if(recv_data.rslt){
-			printf("[vReadTemp] Detect DS2482-100\n");
-			rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, OWR, 0);
-			if(rslt == pdPASS){
-				xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
-				if(recv_data.rslt && !short_detected){
-					printf("[vReadTemp] OWReset() Presence Pule Detected\n");
-					printf("\n************FIND ALL **************** \n");
-					rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, OWF, 0);
-					if(rslt == pdPASS){
-						xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
-						while(recv_data.rslt)
-						{
-							printf("i = %d\n", i);
-							pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
-							sensors++;
-							
-							for(j = 7; j >= 0; j--)
-							{
-								*(pROM_NO[i] + j) = ROM_NO[j];
-								printf("%02X", *(pROM_NO[i] + j));
-							}
-							printf("\nSensor# %d\n", i + 1);
-							i++;
-							
-							rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, OWN, 0);
-							if(rslt == pdPASS){
-								xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
-							}
-						}
-						printf("number of sensors = %d\n", sensors);
-						printf("1-wire device end find\n");
-						rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, SetTempSensor, 0);
-						
-						
-					}
-					else if(rslt == errQUEUE_FULL){
-						printf("[send OWFirst()] data not queued or timeout error\n");
-					}
-					
+		while(recv_data.func == FTS && recv_data.rslt)
+		{
+				pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
+				sensors++;	
+				for(j = 7; j >= 0; j--)
+				{
+					*(pROM_NO[i] + j) = ROM_NO[j]; // load address 1 wire sensor
+					printf("%02X", *(pROM_NO[i] + j));
 				}
-				else
-					printf("[vReadTemp] OWReset() error\n");
-			}
-			else if(rslt == errQUEUE_FULL){
-				printf("[send OWReset()] data not queued or timeout error\n");
+				printf("\nSensor# %d\n", i + 1);
+				i++;
+				rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, FTS, 0);
+				if(rslt == pdPASS){
+					xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+				}
+		}
+		printf("[vReadTemp] number of sensors = %d\n", sensors);
+		printf("[vReadTemp] 1-wire device end find\n");
+
+/**** Set config DS18B20 **********/
+		rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, SetTempSensor, 0);
+		if(rslt == pdPASS){
+			xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
+			if(recv_data.func == SetTempSensor){
+				uint8_t sensor_config = recv_data.rslt;
 			}
 		}
-		else
-			printf("[vReadTemp] NOT Detect DS2482-100\n");
-		
+		else if(rslt == errQUEUE_FULL){
+		printf("[vReadTemp] data not queued or time-out error 2\n");
+		}
 	}
 	else if(rslt == errQUEUE_FULL){
-		printf("[send detectDS2482()] data not queued or timeout error\n");
+		printf("[vReadTemp] data not queued or time-out error 1\n");
 	}
-
+	
+	
 	
 	while(1)
 	{
 		vTaskDelay(1000 / portTICK_RATE_MS);
 		printf("*****Cycle - temperature measurement *****\n");
-		
+		if(sensors > 0 && sensor_config){
+			
+		}
 		
 		rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, OWR, 0);
 		if(rslt == pdPASS){
@@ -828,8 +807,8 @@ void vI2C_Worker(void* arg)
 		{
 			//printf("[vI2C_Worker]sourse = %d, func = %d, param = %d\n", recv_data.source, recv_data.func, recv_data.param);
 			switch(recv_data.func){
-				case detectDS2482:
-					send_data.rslt = DS2482_detect();
+				case FTS:
+					send_data.rslt = Find_TSensors();
 					printf("[vI2C_Worker] rslt = %d\n", send_data.rslt);
 					send_data.func = recv_data.func;
 					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????

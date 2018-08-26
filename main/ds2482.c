@@ -715,16 +715,42 @@ uint8_t OWSearch()
 }
 
 
-void SetDS18B20(){
-	if(OWWriteByte(SkipROM)){
-		if(OWWriteByte(WriteScratchpad)){
-			if(OWWriteByte(0x4B)){
-				if(OWWriteByte(0x46)){
-					OWWriteByte(0x7F);
+uint8_t SetDS18B20(){
+	if(OWReset()){
+		if(OWWriteByte(SkipROM)){
+			if(OWWriteByte(WriteScratchpad)){
+				if(OWWriteByte(0x4B)){
+					if(OWWriteByte(0x46)){
+						if(OWWriteByte(0x7F)){
+							return 1;
+						}
+						else{
+							printf("[SetDS18B20()] - POLL_LIMIT or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+							return 0;
+						}
+					}
+					printf("[SetDS18B20()] - POLL_LIMIT or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+					return 0;
+				}
+				else{
+					printf("[SetDS18B20()] - POLL_LIMIT or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+					return 0;
 				}
 			}
+			else{
+				printf("[SetDS18B20()] - POLL_LIMIT or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+				return 0;
+			}
 		}
-	} 
+		else{
+			printf("[SetDS18B20()] - POLL_LIMIT or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+			return 0;
+		}
+	}
+	else{
+		printf("[SetDS18B20()] - POLL_LIMIT or not detected Presence pulse or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+		return 0;
+	}
 } 
 
 
@@ -737,4 +763,17 @@ portBASE_TYPE SendFuncForI2C_Worker(xQueueHandle queue, uint8_t source, uint8_t 
 	send_data.param = param;
 	return xQueueSendToBack(queue, &send_data, portMAX_DELAY); // 100/portTICK_RATE_MS
 }
+
+
+/* 0 - not found, 1 - found */
+uint8_t Find_TSensors(){
+	if(DS2482_detect()){
+		return = OWSearch();  
+	}
+	else{
+		printf("[Find_TSensors] ds2482 not detected\n");
+		return 0;
+	}
+}
+
 
