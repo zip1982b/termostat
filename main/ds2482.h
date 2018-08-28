@@ -261,7 +261,9 @@ uint8_t OWFirst(void);
 uint8_t OWNext(void);
 
 
-void SetDS18B20(void);
+uint8_t SetDS18B20(void);
+
+uint8_t Find_TSensors(void);
 
 portBASE_TYPE SendFuncForI2C_Worker(xQueueHandle queue, uint8_t source, uint8_t func, uint8_t param);
 

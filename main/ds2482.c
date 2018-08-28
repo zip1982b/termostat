@@ -768,7 +768,7 @@ portBASE_TYPE SendFuncForI2C_Worker(xQueueHandle queue, uint8_t source, uint8_t 
 /* 0 - not found, 1 - found */
 uint8_t Find_TSensors(){
 	if(DS2482_detect()){
-		return = OWSearch();  
+		return OWSearch();  
 	}
 	else{
 		printf("[Find_TSensors] ds2482 not detected\n");
