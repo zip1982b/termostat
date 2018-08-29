@@ -265,6 +265,12 @@ uint8_t SetDS18B20(void);
 
 uint8_t Find_TSensors(void);
 
+uint8_t MatchR(void);
+
+uint8_t ConvertTemp(void);
+
+float ReadScr_pad(void);
+
 portBASE_TYPE SendFuncForI2C_Worker(xQueueHandle queue, uint8_t source, uint8_t func, uint8_t param);
 
 

@@ -323,7 +323,7 @@ uint8_t OWWriteByte(uint8_t sendbyte)
 	
 	switch(ret){
 		case ESP_OK:
-			printf("[OWWriteByte()] - CMD_1WWB = OK \n");
+			//printf("[OWWriteByte()] - CMD_1WWB = OK \n");
 			break;
 		case ESP_ERR_INVALID_ARG:
 			printf("[OWWriteByte()] - Parameter error (1) \n");
@@ -367,18 +367,20 @@ uint8_t OWWriteByte(uint8_t sendbyte)
 
 
 
-//Case C
 
+
+
+//Case A
 uint8_t OWReadByte(void)
 { 
 	/*
-	* S AD,0 [A] 1WRB [A] P     S AD,1 [A] [Status] A [Status] A\ P    S AD,0 [A] SRP [A] E1 [A] Sr AD,1 [A] DD A\ P
-	* 								 		\--------/
-	*						Repeat until 1WB bit has changed to 0
+	* S AD,0 [A] 1WRB [A] P   idle    S AD,0 [A] SRP [A] E1 [A] Sr AD,1 [A] DD A\ P
+	* 								 		
+	*						
 	* DD - read data
 	*/
 	
-	uint8_t status;
+	//uint8_t status;
 	int poll_count = 0;
 	uint8_t data;
 	
@@ -407,17 +409,97 @@ uint8_t OWReadByte(void)
 			break;
 		default:
 			printf("[OWReadByte()] - default block\n");
-	}		
-	
-	do
-	{
-		status = read_statusDS2482();
-		printf("[OWReadByte() while] - status = %d\n", status);
+			
 	}
-	while ((status & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat untill 1WB bit has changed to 0
-	status = read_statusDS2482(); //[Status] notA
-	printf("[OWReadByte()] - status = %d \n", status);
 	
+	cmd = i2c_cmd_link_create();		
+	i2c_master_start(cmd);  //S
+	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
+	i2c_master_write_byte(cmd, CMD_SRP, ACK_CHECK_EN); //SRP - [A]
+	i2c_master_write_byte(cmd, 0xE1, ACK_CHECK_EN); //E1h - [A]
+	
+	i2c_master_start(cmd);  //Sr
+	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
+	i2c_master_read_byte(cmd, &data, NACK_VAL); //[DD] notA
+	i2c_master_stop(cmd); // P
+	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	i2c_cmd_link_delete(cmd);
+	switch(ret){
+		case ESP_OK:
+			printf("[OWReadByte()] - data = %d \n", data);
+			break;
+		case ESP_ERR_INVALID_ARG:
+			printf("[OWReadByte()] - Parameter error (2) \n");
+			break;
+		case ESP_FAIL:
+			printf("[OWReadByte()] - Sending command error, slave doesn`t ACK the transfer \n");
+			break;
+		case ESP_ERR_INVALID_STATE:
+			printf("[OWReadByte()] - i2c driver not installed or not in master mode \n");
+			break;
+		case ESP_ERR_TIMEOUT:
+			printf("[OWReadByte()] - Operation timeout because the bus is busy \n");
+			break;
+		default:
+			printf("[OWReadByte()] - default block");
+	}
+	return data;
+}
+
+
+
+//Case C
+//uint8_t OWReadByte(void)
+//{ 
+	/*
+	* S AD,0 [A] 1WRB [A] P     S AD,1 [A] [Status] A [Status] A\ P    S AD,0 [A] SRP [A] E1 [A] Sr AD,1 [A] DD A\ P
+	* 								 		\--------/
+	*						Repeat until 1WB bit has changed to 0
+	* DD - read data
+	*/
+	
+	//uint8_t status;
+	//int poll_count = 0;
+	//uint8_t data;
+	
+	//i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+	//i2c_master_start(cmd);  //S
+	//i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
+	//i2c_master_write_byte(cmd, CMD_1WRB, ACK_CHECK_EN); //1WRB - [A]
+	//i2c_master_stop(cmd); // P
+	//esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	//i2c_cmd_link_delete(cmd);
+	/*
+	switch(ret){
+		case ESP_OK:
+			printf("[OWReadByte()] - CMD_1WRB = OK \n");
+			break;
+		case ESP_ERR_INVALID_ARG:
+			printf("[OWReadByte()] - Parameter error (1) \n");
+			break;
+		case ESP_FAIL:
+			printf("[OWReadByte()] - Sending command error, slave doesn`t ACK the transfer \n");
+			break;
+		case ESP_ERR_INVALID_STATE:
+			printf("[OWReadByte()] - i2c driver not installed or not in master mode \n");
+			break;
+		case ESP_ERR_TIMEOUT:
+			printf("[OWReadByte()] - Operation timeout because the bus is busy \n");
+			break;
+		default:
+			printf("[OWReadByte()] - default block\n");
+	}		
+	*/
+
+	//do
+	//{
+		//status = read_statusDS2482();
+		//printf("[OWReadByte() while] - status = %d\n", status);
+	//}
+	//while ((status & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat untill 1WB bit has changed to 0
+	//status = read_statusDS2482(); //[Status] notA
+	//printf("[OWReadByte()] - status = %d \n", status);
+	/*
 	if(poll_count >= POLL_LIMIT)
 	{
 		printf("[OWReadByte()] - POLL_LIMIT, DS2482_reset()\n");
@@ -457,7 +539,7 @@ uint8_t OWReadByte(void)
 	}
 	return data;
 }
-
+*/
 
 
 
@@ -775,5 +857,111 @@ uint8_t Find_TSensors(){
 		return 0;
 	}
 }
+
+
+
+uint8_t ConvertTemp(){
+	if(OWReset() && !short_detected){
+		if(OWWriteByte(SkipROM)){
+			if(OWWriteByte(ConvertT)){
+				return 1;
+			}
+			else{
+				printf("[ConvertTemp() -> OWWriteByte(ConvertT)] - POLL_LIMIT or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+				return 0;
+			}
+		}
+		else{
+			printf("[ConvertTemp() -> OWWriteByte(SkipROM)] - POLL_LIMIT or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+			return 0;
+		}
+	}
+	else{
+		printf("[ConvertTemp() -> OWReset()] - POLL_LIMIT or not detected Presence pulse or short detected or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+		return 0;
+	}
+}
+
+
+
+uint8_t MatchR(){
+	if(OWReset() && !short_detected){
+		if(OWWriteByte(MatchROM)){
+			return 1;
+		}
+		else{
+			printf("[ConvertTemp() -> OWWriteByte(MatchROM)] - POLL_LIMIT or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+			return 0;
+		}
+	}
+	else{
+		printf("[ConvertTemp() -> OWReset()] - POLL_LIMIT or not detected Presence pulse or short detected or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+		return 0;
+	}
+}
+
+
+float ReadScr_pad(){
+	uint8_t get[9]; //get scratch pad
+	int temp;
+	float temperatura;
+	uint8_t crc_OK = 0;
+	int n;
+	
+	
+	if(OWWriteByte(ReadScratchpad)){
+		for (n=0; n<9; n++)
+		{
+			get[n] = OWReadByte();
+			//get[8] не надо проверять crc
+			if(n < 8)
+			{
+				calc_crc8(get[n]); // accumulate the CRC
+				
+			}
+			else if(get[8] == crc8){
+				printf("crc8 = %X\n", crc8);
+				crc_OK = 1;
+				printf("crc = OK\n");
+			}
+				
+			else
+			{
+				printf("crc8 = %X\n", crc8);
+				crc_OK = 0;
+				printf("crc = NOK\n");
+			}
+		}
+		printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
+		if(crc_OK){
+			// -
+			if(getbits(get[1], 7, 1))
+			{
+				temp = get[1] << 8 | get[0];
+				temp = (~temp) + 1;
+				temperatura = (temp * 0.0625) * (-1);
+				printf("temp = %f *C\n", temperatura);
+				return temperatura;
+			}
+			// +
+			else 
+			{
+				temp = get[1] << 8 | get[0];
+				temperatura = temp * 0.0625;
+				printf("temp = %f *C\n", temperatura);
+				return temperatura;
+			}
+		}
+		else{
+			printf("crc = NOK\n");
+			return 99.9;
+		}
+			
+		
+	}
+	else
+		return 99.9; 
+}
+
 
 
