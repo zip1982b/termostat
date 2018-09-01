@@ -51,6 +51,7 @@
 #define MatchROM 			0x55
 #define ConvertT 			0x44
 #define WriteScratchpad 	0x4E
+#define CopyScratchpad 		0x48
 
 /* data type xDataSendTo_I2C */
 struct xDataSendTo_I2C{

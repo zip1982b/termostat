@@ -656,11 +656,12 @@ static void vReadTemp(void* arg)
 		printf("[vReadTemp] 1-wire device end find\n");
 
 		/**** Set config DS18B20 **********/
-		/*
+		
 		rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, SetTempSensor, 0);
 		if(rslt == pdPASS){
 			xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY); // if there is no data reception, then the program freezes
 			if(recv_data.func == SetTempSensor){
+				vTaskDelay(5000 / portTICK_RATE_MS);
 				sensor_config = recv_data.rslt;
 				printf("[vReadTemp] sensor_config = %d\n", sensor_config);
 			}
@@ -668,7 +669,7 @@ static void vReadTemp(void* arg)
 		else if(rslt == errQUEUE_FULL){
 		printf("[vReadTemp] data not queued or time-out error 2\n");
 		}
-		*/
+		
 	}
 	else if(rslt == errQUEUE_FULL){
 		printf("[vReadTemp] data not queued or time-out error 1\n");
@@ -678,9 +679,9 @@ static void vReadTemp(void* arg)
 	
 	while(1)
 	{
-		//&& sensor_config
+		//
 		printf("*****Cycle - temperature measurement *****\n");
-		if(sensors > 0){
+		if(sensors > 0 && sensor_config){
 			rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, CTemp, 0); // OWReset() + SkipROM + ConvertT
 			if(rslt == pdPASS){
 				xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);

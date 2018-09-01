@@ -801,10 +801,25 @@ uint8_t SetDS18B20(){
 	if(OWReset()){
 		if(OWWriteByte(SkipROM)){
 			if(OWWriteByte(WriteScratchpad)){
-				if(OWWriteByte(0x4B)){
-					if(OWWriteByte(0x46)){
+				if(OWWriteByte(0x00)){
+					if(OWWriteByte(0x00)){
 						if(OWWriteByte(0x7F)){
-							return 1;
+							if(OWReset()){
+								if(OWWriteByte(SkipROM)){
+									if(OWWriteByte(CopyScratchpad)){
+										return 1;
+									}
+									else
+										return 0;
+								}
+								else
+									return 0;
+							}
+							else{
+								printf("[SetDS18B20()] - POLL_LIMIT or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
+								return 0;
+							}
+							
 						}
 						else{
 							printf("[SetDS18B20()] - POLL_LIMIT or ESP_ERR_INVALID_ARG or ESP_FAIL and etc ... \n");
@@ -902,9 +917,9 @@ uint8_t MatchR(){
 
 
 float ReadScr_pad(){
-	uint8_t get[9]; //get scratch pad
-	int temp;
-	float temperatura;
+	int8_t get[9]; //get scratch pad
+	int temp = 0;
+	float temperatura = 0;
 	uint8_t crc_OK = 0;
 	int n;
 	
