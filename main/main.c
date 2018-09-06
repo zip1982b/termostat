@@ -18,8 +18,8 @@ Autor: zip1982b
 #include "driver/gpio.h"
 #include "freertos/queue.h"
 
-#define GPIO_RELAY1    14
-#define GPIO_RELAY2    12
+#define GPIO_RELAY1    12
+#define GPIO_RELAY2    14
 #define GPIO_OUTPUT_PIN_SEL  ((1ULL<<GPIO_RELAY1) | (1ULL<<GPIO_RELAY2))
 #define GPIO_ENC_CLK     33
 #define GPIO_ENC_DT		 25
