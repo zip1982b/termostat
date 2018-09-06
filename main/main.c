@@ -35,6 +35,7 @@ Autor: zip1982b
 #define OWF						6	/* OWFirst */
 #define RS						7	/* ReadScratchpad() */
 #define SetTempSensor			8	/* SetDS18B20() */
+#define OWWaddress				9
 
 //  Source
 #define Display					1
@@ -46,7 +47,8 @@ Autor: zip1982b
 struct xDataSendTo_I2C{
 	uint8_t source; //Display or ReadTemp
 	uint8_t func;	// detectDS2482, OWR, OWWB and etc..
-	uint8_t param;	// 
+	uint8_t param;	//
+	uint8_t* address;
 };
 */
 struct xDataSendTo_I2C queueI2CdataSend;
@@ -614,7 +616,7 @@ void vDisplay(void *pvParameter)
 static void vReadTemp(void* arg)
 {
 	struct xDataRcvFrom_I2C recv_data;
-	//struct xDataSendTo_I2C send_data;
+	struct xDataSendTo_I2C send_data;
 	portBASE_TYPE xStatus;
 	/* Find Devices */
 	
@@ -633,7 +635,7 @@ static void vReadTemp(void* arg)
 	vTaskDelay(5000 / portTICK_RATE_MS);
 	
 	/***** Find Sensors *****/
-	rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, FTS, 0);
+	rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, FTS, 0, 0);
 	if(rslt == pdPASS){
 		xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
 		while(recv_data.func == FTS && recv_data.rslt)
@@ -647,7 +649,7 @@ static void vReadTemp(void* arg)
 				}
 				printf("\nSensor# %d\n", i + 1);
 				i++;
-				rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, FTS, 0);
+				rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, FTS, 0, 0);
 				if(rslt == pdPASS){
 					xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
 				}
@@ -657,7 +659,7 @@ static void vReadTemp(void* arg)
 
 		/**** Set config DS18B20 **********/
 		
-		rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, SetTempSensor, 0);
+		rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, SetTempSensor, 0, 0);
 		if(rslt == pdPASS){
 			xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY); // if there is no data reception, then the program freezes
 			if(recv_data.func == SetTempSensor){
@@ -682,28 +684,37 @@ static void vReadTemp(void* arg)
 		//
 		printf("*****Cycle - temperature measurement *****\n");
 		if(sensors > 0 && sensor_config){
-			rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, CTemp, 0); // OWReset() + SkipROM + ConvertT
+			rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, CTemp, 0, 0); // OWReset() + SkipROM + ConvertT
 			if(rslt == pdPASS){
 				xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
 				if(recv_data.func == CTemp && recv_data.rslt){
 					vTaskDelay(5000 / portTICK_RATE_MS); // temperature conversion time
 					for(l = 0; l < sensors; l++){
 						crc8 = 0;
-						rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, MROM, 0);
+						rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, MROM, 0, 0);
 						if(rslt == pdPASS){
 							xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
 							if(recv_data.func == MROM && recv_data.rslt){
+								//rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, OWWaddress, 0, pROM_NO[l]);
+								
+								
+								
+								
+								
+								
 								// send ROM address = 64 bit
+								
 								for(k = 0; k <= 7; k++)
 								{
-									rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, OWWB, *(pROM_NO[l] + k));
+									rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, OWWB, *(pROM_NO[l] + k), 0);
 									if(rslt == pdPASS){
 										printf("send %X \n", *(pROM_NO[l] + k));
 										xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
 									}
 									
 								}
-								rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, RS, 0); // ReadScratchpad + receive 9 byte + print temp
+								
+								rslt = SendFuncForI2C_Worker(send_I2C_queue, ReadTemp, RS, 0, 0); // ReadScratchpad + receive 9 byte + print temp
 								if(rslt == pdPASS){
 									xQueueReceive(rcv_I2C_queue, &recv_data, portMAX_DELAY);
 									printf("Temp = %f C\n", recv_data.tmp);
@@ -726,6 +737,7 @@ void vI2C_Worker(void* arg)
 	portBASE_TYPE xStatus;
 	struct xDataSendTo_I2C recv_data;
 	struct xDataRcvFrom_I2C send_data;
+	esp_err_t ret;
 	i2c_master_init();
 	while(1)
 	{
@@ -752,37 +764,42 @@ void vI2C_Worker(void* arg)
 					send_data.func = recv_data.func;
 					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
 					break;
-					/*
-				case OWN:
-					send_data.rslt = OWNext();
-					printf("[vI2C_Worker] OWNext() rslt = %d\n", send_data.rslt);
-					send_data.func = recv_data.func;
-					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
+					
+				case OWWaddress:
+					printf("[vI2C_Worker] OWWrite_address address = %d\n", *(recv_data.address));
+					ret = OWWrite_address(recv_data.address, DATA_LENGTH_address);
+					printf("[vI2C_Worker] OWWrite_address ret = %d\n", ret);
+					//send_data.func = recv_data.func;
+					//xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
 					break;
-					*/
+					
 				case OWWB:
 					//printf("\n [vI2C_Worker] OWWriteByte() param = %d\n", recv_data.param);
 					send_data.rslt = OWWriteByte(recv_data.param);
 					send_data.func = recv_data.func;
 					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY);
 					break;
+					
 				case SetTempSensor:
 					send_data.rslt = SetDS18B20(); // 12 bit
 					send_data.func = recv_data.func;
 					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY);
 					break;
+					
 				case OWRB:
 					send_data.func = recv_data.func;
 					send_data.rslt = OWReadByte();
 					printf("[vI2C_Worker] OWReadByte() rslt = %d\n", send_data.rslt);
 					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
 					break;
+					
 				case RS:
 					send_data.func = recv_data.func;
 					send_data.tmp = ReadScr_pad();
 					printf("[vI2C_Worker] ReadScr_pad() tmp = %f\n", send_data.tmp);
 					xQueueSendToBack(rcv_I2C_queue, &send_data, portMAX_DELAY); //xStatus = /???????
 					break;
+					
 				default:
 					break;
 			}		

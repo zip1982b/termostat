@@ -16,7 +16,7 @@
 
 
 
-
+#define DATA_LENGTH_address    8 
 
 
 
@@ -58,6 +58,7 @@ struct xDataSendTo_I2C{
 	uint8_t source; //Display or ReadTemp
 	uint8_t func;	// detectDS2482, OWR, OWWB and etc..
 	uint8_t param;	// 
+	uint8_t* address;
 };
 
 
@@ -240,26 +241,7 @@ uint8_t OWSearch(void);
 
 
 
-/**
-* @brief Find the 'first' devices on the 1-wire net.
-* @param void. 
-* @return
-* 			1: device found, ROM number in ROM_NO buffer.
-* 			0: no device present.
-*/
-uint8_t OWFirst(void);
-
-
-
-
-/**
-* @brief Find the 'next' devices on the 1-wire net.
-* @param void. 
-* @return
-* 			1: device found, ROM number in ROM_NO buffer.
-* 			0: device not found, end of search.
-*/
-uint8_t OWNext(void);
+esp_err_t OWWrite_address(uint8_t* address_byte, size_t size);
 
 
 uint8_t SetDS18B20(void);
@@ -272,7 +254,7 @@ uint8_t ConvertTemp(void);
 
 float ReadScr_pad(void);
 
-portBASE_TYPE SendFuncForI2C_Worker(xQueueHandle queue, uint8_t source, uint8_t func, uint8_t param);
+portBASE_TYPE SendFuncForI2C_Worker(xQueueHandle queue, uint8_t source, uint8_t func, uint8_t param, uint8_t* address);
 
 
 #endif
