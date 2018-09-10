@@ -52,6 +52,7 @@
 #define MatchROM 			0x55
 #define ConvertT 			0x44
 #define WriteScratchpad 	0x4E
+#define CopyScratchpad 		0x48
 
 
 
@@ -256,6 +257,10 @@ uint8_t OWSearch(void);
 * 			0: device not found, end of search.
 */
 //uint8_t OWNext(void);
+
+
+
+uint8_t read_statusDS2482(void);
 
 
 #endif

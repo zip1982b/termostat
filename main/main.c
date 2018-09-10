@@ -610,10 +610,8 @@ static void vReadTemp(void* arg)
 			// find address ALL devices
 			printf("\nFIND ALL ******** \n");
 			rslt = OWFirst();
-			printf("result OWFirst() = %d\n", rslt);
 			while(rslt)
 			{
-				//printf("i = %d\n", i);
 				pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
 				sensors++;
 				for(j = 7; j >= 0; j--)
@@ -624,22 +622,33 @@ static void vReadTemp(void* arg)
 				printf("\nSensor# %d\n", i + 1);
 				i++;
 				rslt = OWNext();
-				printf("result OWNext() = %d\n", rslt);
+				//printf("result OWNext() = %d\n", rslt);
 			}
-			printf("sensors = %d\n", sensors);
-			printf("1-wire device end find\n");
+			printf("sensors = %d \n", sensors);
+			printf("1-wire device end find ************ \n");
 			
 			vTaskDelay(100 / portTICK_RATE_MS);
-			OWWriteByte(SkipROM); //0xCC
-			printf("SkipROM\n");
-			OWWriteByte(WriteScratchpad); //0x4E
-			printf("WriteScratchpad\n");
-			OWWriteByte(0x4B); //TH
-			printf("TH = 0x4B\n");
-			OWWriteByte(0x46); //TL
-			printf("TL = 0x46\n");
-			OWWriteByte(0x7F); //Config register
-			printf("Config = 0x7F - 12 bit\n");
+			
+			if(OWReset() && !short_detected)
+			{
+				OWWriteByte(SkipROM); //0xCC
+				OWWriteByte(WriteScratchpad); //0x4E
+				OWWriteByte(0x4B); //TH
+				OWWriteByte(0x46); //TL
+				OWWriteByte(0x7F); //Config register
+				if(OWReset() && !short_detected)
+				{
+					OWWriteByte(SkipROM); //0xCC
+					OWWriteByte(CopyScratchpad); //0x48
+				}
+				else
+					printf("1-wire device not detected or short_detected = %d\n", short_detected);
+				
+			}
+			else
+				printf("1-wire device not detected or short_detected = %d\n", short_detected);
+
+			
 		}
 		else
 			printf("1-wire device not detected (1) or short_detected = %d\n", short_detected);
@@ -709,14 +718,14 @@ static void vReadTemp(void* arg)
 						temp = get[1] << 8 | get[0];
 						temp = (~temp) + 1;
 						temperatura = (temp * 0.0625) * (-1);
-						printf("temp = %f *C\n", temperatura);
+						printf("Sensor# %d, temp = %f *C\n", l + 1, temperatura);
 					}
 					// +
 					else 
 					{
 						temp = get[1] << 8 | get[0];
 						temperatura = temp * 0.0625;
-						printf("temp = %f *C\n", temperatura);
+						printf("Sensor# %d, temp = %f *C\n", l + 1, temperatura);
 					}
 						
 				}
@@ -735,12 +744,6 @@ static void vReadTemp(void* arg)
 void app_main()
 {
 	printf("Project - Termostat\n");
-	
-	
-	
-	
-	
-	
 	
 	
 	/*** GPIO init ***/
