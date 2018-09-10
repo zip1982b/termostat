@@ -680,7 +680,7 @@ static void vReadTemp(void* arg)
 				{
 					vTaskDelay(50 / portTICK_RATE_MS);
 					OWWriteByte(MatchROM); //0x55 - соответствие адреса
-					printf("send MatchROM command\n");
+					//printf("send MatchROM command\n");
 					// send ROM address = 64 bit
 					for(k = 0; k <= 7; k++)
 					{
