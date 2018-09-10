@@ -32,6 +32,36 @@ uint8_t crc_tbl[] = {
 };
 
 
+uint8_t read_statusDS2482(void)
+{
+	uint8_t reg_status = 0;
+	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+	i2c_master_start(cmd);  //S
+	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN);
+	i2c_master_read_byte(cmd, &reg_status, NACK_VAL); //[Status] notA
+	i2c_master_stop(cmd); // P
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000/portTICK_RATE_MS);
+	i2c_cmd_link_delete(cmd);
+	switch(ret){
+		case ESP_OK:
+			//printf("[read_statusDS2482()] - reg_status = %d \n", reg_status);
+			break;
+		case ESP_ERR_INVALID_ARG:
+			printf("[read_statusDS2482()] - Parameter error (2) \n");
+			break;
+		case ESP_FAIL:
+			printf("[read_statusDS2482()] - Sending command error, slave doesn`t ACK the transfer \n");
+			break;
+		case ESP_ERR_INVALID_STATE:
+			printf("[read_statusDS2482()] - i2c driver not installed or not in master mode \n");
+			break;
+			printf("[read_statusDS2482()] - Operation timeout because the bus is busy \n");
+		default:
+			printf("[read_statusDS2482()] - default block");
+	}
+	return reg_status;
+}
+
 
 
 
@@ -92,7 +122,7 @@ uint8_t DS2482_reset(void)
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
 	i2c_master_write_byte(cmd, CMD_DRST, ACK_CHECK_EN); //DRST - [A]
 	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -119,7 +149,7 @@ uint8_t DS2482_reset(void)
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
 	i2c_master_read_byte(cmd, &status, NACK_VAL); // [SS] - notA
 	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -167,7 +197,7 @@ uint8_t DS2482_write_config(uint8_t config)
 	i2c_master_write_byte(cmd, CMD_WCFG, ACK_CHECK_EN); //WCFG - [A]
 	i2c_master_write_byte(cmd, reg_config, ACK_CHECK_EN); //CF - [A]
 	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -194,7 +224,7 @@ uint8_t DS2482_write_config(uint8_t config)
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
 	i2c_master_read_byte(cmd, &read_config, NACK_VAL); // [CF] - notA
 	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -287,7 +317,7 @@ uint8_t OWReset(void)
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
 	i2c_master_write_byte(cmd, CMD_1WRS, ACK_CHECK_EN); //1WRS - [A]
 	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -319,7 +349,7 @@ uint8_t OWReset(void)
 	while ((*st & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat untill 1WB bit has changed to 0
 	i2c_master_read_byte(cmd, st, NACK_VAL); //[Status] notA
 	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -395,7 +425,7 @@ uint8_t OWTouchBit(uint8_t sendbit)
 	i2c_master_write_byte(cmd, CMD_1WSB, ACK_CHECK_EN); //1WSB - [A]
 	i2c_master_write_byte(cmd, sendbit ? 0x80 : 0x00, ACK_CHECK_EN); //BB - [A]
 	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -427,7 +457,7 @@ uint8_t OWTouchBit(uint8_t sendbit)
 	while ((*st & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat until 1WB bit has changed to 0
 	i2c_master_read_byte(cmd, st, NACK_VAL); //[Status] notA
 	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -498,7 +528,7 @@ void OWWriteByte(uint8_t sendbyte)
 	i2c_master_write_byte(cmd, CMD_1WWB, ACK_CHECK_EN); //1WWB - [A]
 	i2c_master_write_byte(cmd, sendbyte, ACK_CHECK_EN); //DD - [A]
 	//i2c_master_stop(cmd); // P
-	//esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	//esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	//i2c_cmd_link_delete(cmd);
 	/*
 	switch(ret){
@@ -532,7 +562,7 @@ void OWWriteByte(uint8_t sendbyte)
 	while ((status & STATUS_1WB) && (poll_count++ < POLL_LIMIT)); //Repeat until 1WB bit has changed to 0
 	i2c_master_read_byte(cmd, &status, NACK_VAL); //[Status] notA
 	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -580,7 +610,7 @@ uint8_t OWReadByte(void)
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | WRITE_BIT, ACK_CHECK_EN); //AD,0  - [A]
 	i2c_master_write_byte(cmd, CMD_1WRB, ACK_CHECK_EN); //1WRB - [A]
 	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -611,7 +641,7 @@ uint8_t OWReadByte(void)
 	i2c_master_write_byte(cmd, DS2482_ADDR << 1 | READ_BIT, ACK_CHECK_EN); //AD,1  - [A]
 	i2c_master_read_byte(cmd, &data, NACK_VAL); //[DD] notA
 	i2c_master_stop(cmd); // P
-	ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -689,7 +719,7 @@ uint8_t OWReadByte(void)
 	i2c_master_read_byte(cmd, &data, NACK_VAL); //[DD] notA
 	
 	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -765,7 +795,7 @@ uint8_t DS2482_search_triplet(uint8_t search_direction)
 	i2c_master_write_byte(cmd, CMD_1WT, ACK_CHECK_EN); //1WT - [A]
 	i2c_master_write_byte(cmd, search_direction ? 0x80 : 0x00, ACK_CHECK_EN); //SS - [A]
 	i2c_master_stop(cmd); // P
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_DS2482, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	
 	switch(ret){

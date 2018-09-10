@@ -12,7 +12,8 @@
 #include "i2c_set.h"
 
 #define DS2482_ADDR			0x18		/* slave address for DS2482 bridge*/
-#define POLL_LIMIT			3000
+
+#define POLL_LIMIT			300
 
 
 
@@ -53,6 +54,9 @@
 #define WriteScratchpad 	0x4E
 
 
+
+
+uint8_t read_statusDS2482(void);
 
 uint8_t calc_crc8(uint8_t);
 

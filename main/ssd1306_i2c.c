@@ -44,7 +44,7 @@ void ssd1306_I2C_WriteMulti(uint8_t reg, uint8_t *data_or_command, size_t size) 
 	}
 	*/
 	i2c_master_stop(cmd);
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_SSD1306, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -81,7 +81,7 @@ void ssd1306_I2C_Write(uint8_t reg, uint8_t data_or_command) {
 	i2c_master_write_byte(cmd, reg, ACK_CHECK_EN);
 	i2c_master_write_byte(cmd, data_or_command, ACK_CHECK_EN);
 	i2c_master_stop(cmd);
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_SSD1306, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
@@ -116,7 +116,7 @@ uint8_t ssd1306_I2C_IsDeviceConnected(void) {
 	i2c_master_write_byte(cmd, OLED_I2C_ADDRESS << 1 | WRITE_BIT, ACK_CHECK_EN);
 	//i2c_master_write_byte(cmd, OLED_CMD_DISPLAY_OFF, ACK_CHECK_EN); //OLED_CMD_DISPLAY_OFF
 	i2c_master_stop(cmd);
-	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_RATE_MS);
+	esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM_SSD1306, cmd, 1000 / portTICK_RATE_MS);
 	i2c_cmd_link_delete(cmd);
 	switch(ret){
 		case ESP_OK:
