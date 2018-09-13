@@ -533,7 +533,7 @@ void vSetContrast(uint8_t contrast) {
 
 void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info)
 {
-	char menuItem1[] = "Set relay";
+	char menuItem1[] = "Sensors addresss";
 	char menuItem2[] = "Set temp";
 	char menuItem3[] = "Process view";
 	char menuItem4[] = "Chip info";

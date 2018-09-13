@@ -26,12 +26,36 @@ Autor: zip1982b
 
 
 
+
+
 /* 	
 	cr	- clockwise rotation
 	ccr	- counter clockwise rotation
 	bp	- button pressed
 */
 enum action{cr, ccr, bp}; 
+
+/*
+ * GPIO status:
+ *	GPIO14: output (relay1)
+ *	GPIO12: output (relay2)
+ *	GPIO33:(clk - encoder) input
+ *	GPIO25:(dt - encoder) input
+ *	GPIO26:(sw - encoder) input
+ *
+*/
+#define GPIO_RELAY1    12
+//#define GPIO_RELAY2    14
+#define GPIO_OUTPUT_PIN_SEL  (1ULL<<GPIO_RELAY1) //| (1ULL<<GPIO_RELAY2))
+
+#define GPIO_ENC_CLK     35
+#define GPIO_ENC_DT		 32
+#define GPIO_ENC_SW		 33
+#define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_ENC_CLK) | (1ULL<<GPIO_ENC_DT) | (1ULL<<GPIO_ENC_SW)) 
+
+#define ESP_INTR_FLAG_DEFAULT 0
+
+
 
 portBASE_TYPE xStatusOLED;
 portBASE_TYPE xStatusReadTemp; // status task create
@@ -127,7 +151,7 @@ static void ENC(void* arg)
 			vTaskDelay(800 / portTICK_RATE_MS);
 			xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
 			gpio_set_intr_type(GPIO_ENC_SW, GPIO_INTR_NEGEDGE);//enable
-			
+			// 
 		}
     }
 }
@@ -139,18 +163,6 @@ static void ENC(void* arg)
 void vDisplay(void *pvParameter)
 {
 	i2c_master_init(I2C_MASTER_NUM_SSD1306, I2C_MASTER_SDA_SSD1306, I2C_MASTER_SCL_SSD1306, I2C_MASTER_FREQ_HZ_SSD1306, I2C_MASTER_RX_BUF_SSD1306, I2C_MASTER_TX_BUF_SSD1306);
-	/* Print chip information */
-    esp_chip_info_t chip_info;
-    esp_chip_info(&chip_info);
-    printf("[vDisplay]This is ESP32 chip with %d CPU cores, WiFi%s%s, ",
-            chip_info.cores,
-            (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
-            (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
-
-    printf("[vDisplay]silicon revision %d, \n", chip_info.revision);
-
-    printf("[vDisplay]%dMB %s flash\n", spi_flash_get_chip_size() / (1024 * 1024),
-            (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
 	
 	portBASE_TYPE xStatusReceive;
 	enum action rotate;
@@ -206,7 +218,32 @@ void vDisplay(void *pvParameter)
 			//printf("[vDisplay]xStatusReceive = %d\n", xStatusReceive);
 			//printf("[vDisplay]xStatusReceive not pdPass\n");
 	/***** End Read Encoder ***********************/	
-		
+	
+
+	/***** Read Temperature and sensors address ***********************/
+		xStatusReceive = xQueueReceive(ENC_queue, &rotate, 300/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
+		if(xStatusReceive == pdPASS)
+		{
+			change = 1;
+			printf("[vDisplay]rotate = %d\n", rotate);
+			switch(rotate){
+				case 0: //down_cw = clockwise
+					down_cw = 1;
+					break;
+				case 1: //up_ccw = counter clockwise
+					up_ccw = 1;
+					break;
+				case 2: //press_button = button pressed
+					press_button = 1;
+					break;
+			}
+		}
+		//else
+			//printf("[vDisplay]xStatusReceive = %d\n", xStatusReceive);
+			//printf("[vDisplay]xStatusReceive not pdPass\n");
+	/***** End Read Encoder ***********************/
+
+
 		
 		switch(state){
 			/*** Frame 1 - State 10 ************************************************/
