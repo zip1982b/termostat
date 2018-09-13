@@ -57,6 +57,7 @@ enum action{cr, ccr, bp};
 
 
 
+
 portBASE_TYPE xStatusOLED;
 portBASE_TYPE xStatusReadTemp; // status task create
 
@@ -65,7 +66,7 @@ xTaskHandle xRead_Temp_Handle; // identification Read Temp task
 
 static xQueueHandle gpio_evt_queue = NULL;
 static xQueueHandle ENC_queue = NULL;
-
+static xQueueHandle found_sensor_queue = NULL;
 
 
 
@@ -80,7 +81,15 @@ extern uint8_t crc_tbl[];
 extern uint8_t ROM_NO[8];
 
 
+void turnRelay1_Off(void)
+{
+	gpio_set_level(GPIO_RELAY1, 0);
+}
 
+void turnRelay1_On(void)
+{
+	gpio_set_level(GPIO_RELAY1, 1);
+}
 
 
 
@@ -108,7 +117,7 @@ static void ENC(void* arg)
 {
 	
 	enum action rotate;
-	portBASE_TYPE xStatus;
+	//portBASE_TYPE xStatus;
     uint32_t io_num;
     for(;;) {
 		io_num = 0;
@@ -121,7 +130,7 @@ static void ENC(void* arg)
 			{
 				rotate = cr;
 				printf("[ENC]clockwise rotation\n");
-				xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
+				xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS); //xStatus = 
 				gpio_set_intr_type(GPIO_ENC_DT, GPIO_INTR_ANYEDGE);//enable
 				
 			}
@@ -138,7 +147,7 @@ static void ENC(void* arg)
 				rotate = ccr;
 				//printf("[ENC]rotate = %d\n", rotate);
 				printf("[ENC]counter clockwise rotation\n");
-				xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
+				xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);//xStatus = 
 				gpio_set_intr_type(GPIO_ENC_CLK, GPIO_INTR_ANYEDGE);
 			}
 				
@@ -149,7 +158,7 @@ static void ENC(void* arg)
 			//printf("[ENC]rotate = %d\n", rotate);
 			printf("[ENC]Button is pressed\n");
 			vTaskDelay(800 / portTICK_RATE_MS);
-			xStatus = xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);
+			xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);//xStatus = 
 			gpio_set_intr_type(GPIO_ENC_SW, GPIO_INTR_NEGEDGE);//enable
 			// 
 		}
@@ -164,8 +173,15 @@ void vDisplay(void *pvParameter)
 {
 	i2c_master_init(I2C_MASTER_NUM_SSD1306, I2C_MASTER_SDA_SSD1306, I2C_MASTER_SCL_SSD1306, I2C_MASTER_FREQ_HZ_SSD1306, I2C_MASTER_RX_BUF_SSD1306, I2C_MASTER_TX_BUF_SSD1306);
 	
+
+	esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+
 	portBASE_TYPE xStatusReceive;
 	enum action rotate;
+	uint8_t sensors = 0;
+
+	
 	
 	uint8_t state = 10; // default state
 	uint8_t frame = 1;
@@ -189,13 +205,16 @@ void vDisplay(void *pvParameter)
 		down_cw = 0;
 		up_ccw = 0;
 		press_button = 0;	
+
+
 		if(change)
 		{
 			
-			vDrawMenu(menuitem, state, selectRelay, temp, contrast, chip_info);
+			vDrawMenu(menuitem, state, selectRelay, temp, contrast, chip_info, sensors);
 			change = 0;
-			
 		}
+
+		
 	/***** Read Encoder ***********************/
 		xStatusReceive = xQueueReceive(ENC_queue, &rotate, 300/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
 		if(xStatusReceive == pdPASS)
@@ -220,30 +239,20 @@ void vDisplay(void *pvParameter)
 	/***** End Read Encoder ***********************/	
 	
 
-	/***** Read Temperature and sensors address ***********************/
-		xStatusReceive = xQueueReceive(ENC_queue, &rotate, 300/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
+	/***** sensors ***********************/
+		xStatusReceive = xQueueReceive(found_sensor_queue, &sensors, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
 		if(xStatusReceive == pdPASS)
 		{
+
 			change = 1;
-			printf("[vDisplay]rotate = %d\n", rotate);
-			switch(rotate){
-				case 0: //down_cw = clockwise
-					down_cw = 1;
-					break;
-				case 1: //up_ccw = counter clockwise
-					up_ccw = 1;
-					break;
-				case 2: //press_button = button pressed
-					press_button = 1;
-					break;
-			}
+			printf("[vDisplay] sensors = %x\n", sensors);
+			
 		}
-		//else
-			//printf("[vDisplay]xStatusReceive = %d\n", xStatusReceive);
-			//printf("[vDisplay]xStatusReceive not pdPass\n");
-	/***** End Read Encoder ***********************/
+		
+	/***** End Read temperature ********************/
 
 
+		
 		
 		switch(state){
 			/*** Frame 1 - State 10 ************************************************/
@@ -253,7 +262,7 @@ void vDisplay(void *pvParameter)
 				if(down_cw) { menuitem++;}
 				else if(up_ccw) { menuitem--; }
 				
-				// go to Set relay
+				// go to Sensors address
 				else if(press_button && menuitem == 1) { 
 					state = 1;
 					printf("state = 1\n");
@@ -463,17 +472,9 @@ void vDisplay(void *pvParameter)
 				break;
 			/********************************************************/
 			
-			/*** Set relay ***/
+			/*** Sensors address ***/
 			case 1:
-				if(down_cw){ 
-					selectRelay++;
-					if(selectRelay >= 2) { selectRelay = 0; }
-				}
-				else if(up_ccw){ 
-					selectRelay--;
-					if(selectRelay <= -1) { selectRelay = 1; }
-				}
-				else if(press_button && frame == 1) {
+				if(press_button && frame == 1) {
 					state = 10;
 					printf("state = 10\n");
 				}
@@ -651,16 +652,21 @@ static void vReadTemp(void* arg)
 			{
 				pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
 				sensors++;
+				
 				for(j = 7; j >= 0; j--)
 				{
 					*(pROM_NO[i] + j) = ROM_NO[j];
 					printf("%02X", *(pROM_NO[i] + j));
 				}
+
+				
+
 				printf("\nSensor# %d\n", i + 1);
 				i++;
 				rslt = OWNext();
 				//printf("result OWNext() = %d\n", rslt);
 			}
+			xQueueSendToBack(found_sensor_queue, &sensors, 100/portTICK_RATE_MS);
 			printf("sensors = %d \n", sensors);
 			printf("1-wire device end find ************ \n");
 			
@@ -827,6 +833,8 @@ void app_main()
     xTaskCreate(ENC, "ENC", 1548, NULL, 12, NULL);
 	
 	ENC_queue = xQueueCreate(10, sizeof(uint32_t));
+
+	found_sensor_queue = xQueueCreate(2, sizeof(uint8_t));
 	
 	//install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);

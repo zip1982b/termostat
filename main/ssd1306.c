@@ -531,9 +531,9 @@ void vSetContrast(uint8_t contrast) {
 	//SSD1306_WRITECOMMAND(0x);  
 }
 
-void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info)
+void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info, uint8_t sensors)
 {
-	char menuItem1[] = "Sensors addresss";
+	char menuItem1[] = "Found sensors";
 	char menuItem2[] = "Set temp";
 	char menuItem3[] = "Process view";
 	char menuItem4[] = "Chip info";
@@ -542,7 +542,8 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 	char menuItem7[] = "Display sleep";
 	char menuItem8[] = "Reset CPU";
 	
-	char *relay[2] = { "Relay1", "Relay2" };
+	
+	
 	
 	if(state > 6)
 	{
@@ -721,16 +722,19 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 	/***************** Page 1 end ***************************/
 	
 	/*****************  Page 2 ******************************/
-	/*** set relay view ***/
+	/*** found sensors view ***/
 	else if(state == 1){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
-		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
+		SSD1306_GotoXY(20, 0); // установить курсор в позицию 20 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem1, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
 		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
-		SSD1306_GotoXY(5, 15);
-		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
-		SSD1306_GotoXY(5, 35);
-		SSD1306_Puts(relay[selectRelay], &Font_11x18, SSD1306_COLOR_WHITE);
+	
+
+		SSD1306_GotoXY(5, 20);
+		SSD1306_Puts("Quantity:", &Font_11x18, SSD1306_COLOR_WHITE);
+		char s[5];
+		itoa(sensors, s, 10);
+		SSD1306_Puts(s, &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 	
@@ -840,14 +844,6 @@ void vDisplayMenuItem(char *item, uint8_t position, uint8_t selected)
 
 
 
-void turnRelay1_Off(void)
-{
-	gpio_set_level(GPIO_RELAY1, 0);
-}
 
-void turnRelay1_On(void)
-{
-	gpio_set_level(GPIO_RELAY1, 1);
-}
 
 
