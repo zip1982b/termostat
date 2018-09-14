@@ -81,17 +81,6 @@ extern uint8_t crc_tbl[];
 extern uint8_t ROM_NO[8];
 
 
-void turnRelay1_Off(void)
-{
-	gpio_set_level(GPIO_RELAY1, 0);
-}
-
-void turnRelay1_On(void)
-{
-	gpio_set_level(GPIO_RELAY1, 1);
-}
-
-
 
 
 static void IRAM_ATTR gpio_isr_handler(void* arg)
@@ -614,7 +603,7 @@ void vDisplay(void *pvParameter)
 
 
 
-static void vReadTemp(void* arg)
+static void vRegulator(void* arg)
 {
 	i2c_master_init(I2C_MASTER_NUM_DS2482, I2C_MASTER_SDA_DS2482, I2C_MASTER_SCL_DS2482, I2C_MASTER_FREQ_HZ_DS2482, I2C_MASTER_RX_BUF_DS2482, I2C_MASTER_TX_BUF_DS2482);
 	/* Find Devices */
@@ -770,6 +759,16 @@ static void vReadTemp(void* arg)
 						temperatura = temp * 0.0625;
 						printf("Sensor# %d, temp = %f *C\n", l + 1, temperatura);
 					}
+					
+					
+					// controller temp
+					if(reg(ust, temperatura)){
+						gpio_set_level(GPIO_RELAY1, 1);
+					}
+					else
+						gpio_set_level(GPIO_RELAY1, 0);
+					
+					
 						
 				}
 				else
@@ -786,9 +785,6 @@ static void vReadTemp(void* arg)
 
 void app_main()
 {
-	printf("Project - Termostat\n");
-	
-	
 	/*** GPIO init ***/
 	gpio_config_t io_conf;
 	//Настройки GPIO для релейного ВЫХОДа
@@ -856,11 +852,11 @@ void app_main()
 		printf("Task vDisplay is not created\n");
 	
 	
-	xStatusReadTemp = xTaskCreate(vReadTemp, "vReadTemp", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
+	xStatusReadTemp = xTaskCreate(vRegulator, "vRegulator", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
 	if(xStatusReadTemp == pdPASS)
-		printf("Task vReadTemp is created!\n");
+		printf("Task vRegulator is created!\n");
 	else
-		printf("Task vReadTemp is not created\n");
+		printf("Task vRegulator is not created\n");
 	
 }
 
