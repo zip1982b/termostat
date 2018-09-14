@@ -175,11 +175,12 @@ void vDisplay(void *pvParameter)
 {
 	i2c_master_init(I2C_MASTER_NUM_SSD1306, I2C_MASTER_SDA_SSD1306, I2C_MASTER_SCL_SSD1306, I2C_MASTER_FREQ_HZ_SSD1306, I2C_MASTER_RX_BUF_SSD1306, I2C_MASTER_TX_BUF_SSD1306);
 	
-
+	vTaskDelay(1000 / portTICK_RATE_MS);
 	esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
 
 	portBASE_TYPE xStatusReceive;
+	portBASE_TYPE xStatusSend;
 	enum action rotate;
 	uint8_t sensors = 0;
 
@@ -192,6 +193,7 @@ void vDisplay(void *pvParameter)
 	int selectRelay = 0;
 	uint8_t contrast = 100; // default contrast value
 	uint8_t temp = 22; // default temp value
+	uint8_t ust = 0;
 
 	uint8_t change = 1;
 	
@@ -203,6 +205,20 @@ void vDisplay(void *pvParameter)
 	uint8_t up_ccw;
 	uint8_t press_button;
 	printf("state = 10\n");
+	
+	
+	/***** sensors ***********************/
+		xStatusReceive = xQueueReceive(found_sensor_queue, &sensors, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
+		if(xStatusReceive == pdPASS)
+		{
+
+			change = 1;
+			printf("[vDisplay] sensors = %x\n", sensors);
+			
+		}
+		
+	/***** End Read temperature ********************/
+	
     while(1) {
 		down_cw = 0;
 		up_ccw = 0;
@@ -241,19 +257,18 @@ void vDisplay(void *pvParameter)
 	/***** End Read Encoder ***********************/	
 	
 
-	/***** sensors ***********************/
-		xStatusReceive = xQueueReceive(found_sensor_queue, &sensors, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
-		if(xStatusReceive == pdPASS)
-		{
-
-			change = 1;
-			printf("[vDisplay] sensors = %x\n", sensors);
-			
+	
+		if(temp != ust){
+			ust = temp;
+			xStatusSend = xQueueSendToBack(dataFromDisplay_queue, &ust, 100/portTICK_RATE_MS);
+			if(xStatusSend == pdPASS)
+			{
+				printf("[vDisplay] send ustavka\n");
+				printf("[vDisplay] temp = %d\n", temp);
+				printf("[vDisplay] ustavka = %d\n", ust);
+			}
 		}
 		
-	/***** End Read temperature ********************/
-
-	xQueueSendToBack(dataFromDisplay_queue, &temp, 100/portTICK_RATE_MS);
 		
 		
 		switch(state){
@@ -637,13 +652,9 @@ static void vRegulator(void* arg)
 	int temp;
 	float temperatura;
 	
-	
-	
+	vTaskDelay(50 / portTICK_RATE_MS);
 	
 
-	vTaskDelay(5000 / portTICK_RATE_MS);
-	
-	
 	if(DS2482_detect())
 	{
 		/*ds2482 i2c/1-wire bridge detected*/
@@ -707,7 +718,7 @@ static void vRegulator(void* arg)
 	
 	while(1)
 	{
-		vTaskDelay(3000 / portTICK_RATE_MS);
+		vTaskDelay(1000 / portTICK_RATE_MS);
 		xQueueReceive(dataFromDisplay_queue, &ust, 1000/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
 		printf("**********************Cycle**********************************\n");
 		if(OWReset() && !short_detected && sensors > 0)
@@ -715,7 +726,7 @@ static void vRegulator(void* arg)
 			OWWriteByte(SkipROM); //0xCC - пропуск проверки адресов
 			printf("SkipROM\n");
 			OWWriteByte(ConvertT); //0x44 - все датчики измеряют свою температуру
-			printf("ConvertT\n");
+			printf("ConvertT - delay 1 sec for conversion\n");
 			vTaskDelay(1000 / portTICK_RATE_MS);
 			
 			for(l = 0; l < sensors; l++)
