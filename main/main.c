@@ -67,10 +67,10 @@ xTaskHandle xRead_Temp_Handle; // identification Read Temp task
 static xQueueHandle gpio_evt_queue = NULL;
 static xQueueHandle ENC_queue = NULL;
 static xQueueHandle found_sensor_queue = NULL;
+static xQueueHandle dataFromDisplay_queue = NULL;
 
 
-
-
+uint8_t reg(uint8_t ust, float temperatura);
 
 
 
@@ -79,6 +79,19 @@ extern uint8_t short_detected; //short detected on 1-wire net
 extern uint8_t crc8;
 extern uint8_t crc_tbl[];
 extern uint8_t ROM_NO[8];
+
+
+uint8_t reg(uint8_t ust, float temperatura){
+	uint8_t delta = 1;
+	if(temperatura < ust - delta)
+		return 1;
+	else if(temperatura > ust + delta)
+		return 0;
+	return 0;
+}
+
+
+
 
 
 
@@ -240,7 +253,7 @@ void vDisplay(void *pvParameter)
 		
 	/***** End Read temperature ********************/
 
-
+	xQueueSendToBack(dataFromDisplay_queue, &temp, 100/portTICK_RATE_MS);
 		
 		
 		switch(state){
@@ -474,7 +487,7 @@ void vDisplay(void *pvParameter)
 				//printf("State = 2\n");
 				if(down_cw){ 
 					temp++;
-					if(temp >= 25) { temp = 25; }
+					if(temp >= 30) { temp = 30; }
 				}
 				else if(up_ccw){ 
 					temp--;
@@ -618,10 +631,13 @@ static void vRegulator(void* arg)
 	int l;
 	
 	uint8_t sensors = 0;
+	uint8_t ust = 22;
 	
 	uint8_t get[9]; //get scratch pad
 	int temp;
 	float temperatura;
+	
+	
 	
 	
 
@@ -684,8 +700,6 @@ static void vRegulator(void* arg)
 		}
 		else
 			printf("1-wire device not detected (1) or short_detected = %d\n", short_detected);
-		
-		
 	}
 	else
 		printf("ds2482 i2c/1-wire bridge not detected\n");
@@ -694,16 +708,15 @@ static void vRegulator(void* arg)
 	while(1)
 	{
 		vTaskDelay(3000 / portTICK_RATE_MS);
-		
+		xQueueReceive(dataFromDisplay_queue, &ust, 1000/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
 		printf("**********************Cycle**********************************\n");
 		if(OWReset() && !short_detected && sensors > 0)
 		{
-			vTaskDelay(50 / portTICK_RATE_MS);
 			OWWriteByte(SkipROM); //0xCC - пропуск проверки адресов
 			printf("SkipROM\n");
 			OWWriteByte(ConvertT); //0x44 - все датчики измеряют свою температуру
 			printf("ConvertT\n");
-			
+			vTaskDelay(1000 / portTICK_RATE_MS);
 			
 			for(l = 0; l < sensors; l++)
 			{
@@ -741,8 +754,6 @@ static void vRegulator(void* arg)
 					}
 					printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
 					// расчёт температуры
-					//temp_msb = get[1]; 
-					//temp_lsb = get[0];
 					
 					// -
 					if(getbits(get[1], 7, 1))
@@ -760,23 +771,26 @@ static void vRegulator(void* arg)
 						printf("Sensor# %d, temp = %f *C\n", l + 1, temperatura);
 					}
 					
-					
+					printf("[vRegulator] ustavka = %d\n", ust);
 					// controller temp
-					if(reg(ust, temperatura)){
+					if(reg(ust, temperatura))
 						gpio_set_level(GPIO_RELAY1, 1);
-					}
 					else
 						gpio_set_level(GPIO_RELAY1, 0);
 					
-					
-						
 				}
-				else
-					printf("1-wire device not detected(2) or short_detected = %d\n", short_detected);
+				else{
+					gpio_set_level(GPIO_RELAY1, 0);
+					printf("[vRegulator] Relay off - 1-wire device not detected(2) or short_detected = %d\n", short_detected);
+				}
 			}
 		}
 		else
-			printf("1-wire device not detected(1) or sensors = 0 or short_detected = %d\n", short_detected);
+		{
+			gpio_set_level(GPIO_RELAY1, 0);
+			printf("[vRegulator] Relay off - 1-wire device not detected(1) or sensors = 0 or short_detected = %d\n", short_detected);
+		}
+			
 		
 	}
 	vTaskDelete(NULL);
@@ -831,6 +845,8 @@ void app_main()
 	ENC_queue = xQueueCreate(10, sizeof(uint32_t));
 
 	found_sensor_queue = xQueueCreate(2, sizeof(uint8_t));
+	
+	dataFromDisplay_queue = xQueueCreate(8, sizeof(uint8_t)); // ustavka
 	
 	//install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
