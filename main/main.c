@@ -70,8 +70,6 @@ static xQueueHandle found_sensor_queue = NULL;
 static xQueueHandle dataFromDisplay_queue = NULL;
 
 
-uint8_t reg(uint8_t ust, float temperatura);
-
 
 
 
@@ -81,14 +79,6 @@ extern uint8_t crc_tbl[];
 extern uint8_t ROM_NO[8];
 
 
-uint8_t reg(uint8_t ust, float temperatura){
-	uint8_t delta = 1;
-	if(temperatura < ust - delta)
-		return 1;
-	else if(temperatura > ust + delta)
-		return 0;
-	return 0;
-}
 
 
 
@@ -651,7 +641,7 @@ static void vRegulator(void* arg)
 	uint8_t get[9]; //get scratch pad
 	int temp;
 	float temperatura;
-	
+	uint8_t delta = 1;
 	vTaskDelay(50 / portTICK_RATE_MS);
 	
 
@@ -784,10 +774,16 @@ static void vRegulator(void* arg)
 					
 					printf("[vRegulator] ustavka = %d\n", ust);
 					// controller temp
-					if(reg(ust, temperatura))
+					if(temperatura < ust - delta){
 						gpio_set_level(GPIO_RELAY1, 1);
-					else
+						printf("[vRegulator] Relay on\n");
+					}
+					
+					if(temperatura > ust + delta){
 						gpio_set_level(GPIO_RELAY1, 0);
+						printf("[vRegulator] Relay off\n");
+					}
+					
 					
 				}
 				else{
