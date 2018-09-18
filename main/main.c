@@ -149,7 +149,7 @@ static void ENC(void* arg)
 			rotate = bp;
 			//printf("[ENC]rotate = %d\n", rotate);
 			printf("[ENC]Button is pressed\n");
-			vTaskDelay(800 / portTICK_RATE_MS);
+			vTaskDelay(300 / portTICK_RATE_MS);
 			xQueueSendToBack(ENC_queue, &rotate, 100/portTICK_RATE_MS);//xStatus = 
 			gpio_set_intr_type(GPIO_ENC_SW, GPIO_INTR_NEGEDGE);//enable
 			// 
