@@ -626,7 +626,9 @@ static void vRegulator(void* arg)
 	i2c_master_init(I2C_MASTER_NUM_DS2482, I2C_MASTER_SDA_DS2482, I2C_MASTER_SCL_DS2482, I2C_MASTER_FREQ_HZ_DS2482, I2C_MASTER_RX_BUF_DS2482, I2C_MASTER_TX_BUF_DS2482);
 	/* Find Devices */
 	uint8_t rslt = 0;
-	
+	float average = 0;
+	float sum = 0;
+	uint8_t checksum = 0;
 	uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
 	
 	uint8_t i = 0;
@@ -634,6 +636,7 @@ static void vRegulator(void* arg)
 	int k;
 	int n;
 	int l;
+	
 	
 	uint8_t sensors = 0;
 	uint8_t ust = 22;
@@ -676,6 +679,9 @@ static void vRegulator(void* arg)
 			printf("sensors = %d \n", sensors);
 			printf("1-wire device end find ************ \n");
 			
+			
+			
+			
 			vTaskDelay(100 / portTICK_RATE_MS);
 			
 			if(OWReset() && !short_detected)
@@ -705,6 +711,10 @@ static void vRegulator(void* arg)
 	else
 		printf("ds2482 i2c/1-wire bridge not detected\n");
 	
+	float *pSensor[sensors];
+	for(uint8_t p = 0; p < sensors; p++){
+		pSensor[p] = (float*) malloc(sizeof(float));
+	}
 	
 	while(1)
 	{
@@ -741,49 +751,42 @@ static void vRegulator(void* arg)
 						//printf("get[%d] = %X\n", n, get[n]);
 								
 						//get[8] не надо проверять crc
-						if(n < 8)
-						{
+						if(n < 8){
 							calc_crc8(get[n]); // accumulate the CRC
 							//printf("crc8 = %X\n", crc8);
 						}
-						else if(get[8] == crc8)
+						else if(get[8] == crc8){
 							printf("crc = OK\n");
-						else
-						{
+							checksum = 1;
+						}
+						else{
+							checksum = 0;
 							printf("crc = NOK\n");
 						}
 					}
 					printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
+					
 					// расчёт температуры
-					
-					// -
-					if(getbits(get[1], 7, 1))
-					{
-						temp = get[1] << 8 | get[0];
-						temp = (~temp) + 1;
-						temperatura = (temp * 0.0625) * (-1);
-						printf("Sensor# %d, temp = %f *C\n", l + 1, temperatura);
+					if(checksum){
+						// -
+						if(getbits(get[1], 7, 1))
+						{
+							temp = get[1] << 8 | get[0];
+							temp = (~temp) + 1;
+							temperatura = (temp * 0.0625) * (-1);
+							//printf("Sensor# %d, temp = %f *C\n", l + 1, temperatura);
+						}
+						// +
+						else 
+						{
+							temp = get[1] << 8 | get[0];
+							temperatura = temp * 0.0625;
+							//printf("Sensor# %d, temp = %f *C\n", l + 1, temperatura);
+						}	
+						*pSensor[l] = temperatura; 
 					}
-					// +
-					else 
-					{
-						temp = get[1] << 8 | get[0];
-						temperatura = temp * 0.0625;
-						printf("Sensor# %d, temp = %f *C\n", l + 1, temperatura);
-					}
-					
-					printf("[vRegulator] ustavka = %d\n", ust);
-					// controller temp
-					if(temperatura < ust - delta){
-						gpio_set_level(GPIO_RELAY1, 1);
-						printf("[vRegulator] Relay on\n");
-					}
-					
-					if(temperatura > ust + delta){
-						gpio_set_level(GPIO_RELAY1, 0);
-						printf("[vRegulator] Relay off\n");
-					}
-					
+					else
+						*pSensor[l] = 200.00;
 					
 				}
 				else{
@@ -791,14 +794,37 @@ static void vRegulator(void* arg)
 					printf("[vRegulator] Relay off - 1-wire device not detected(2) or short_detected = %d\n", short_detected);
 				}
 			}
+			
+			printf("[vRegulator] ustavka = %d*C\n", ust);
+			
+			
+			for(uint8_t v = 0; v < sensors; v++){
+				printf("[vRegulator] Sensor#%d = %.4f *C\n", v + 1, *pSensor[v]);
+				sum += *pSensor[v];
+			}	
+			
+			average = sum / sensors;
+			sum = 0;
+			printf("[vRegulator] average = %f *C\n", average);
+				
+				
+			// controller temp
+			if(average < ust - delta){
+				gpio_set_level(GPIO_RELAY1, 1);
+				printf("[vRegulator] Relay on\n");
+			}
+						
+			if(average > ust + delta){
+				gpio_set_level(GPIO_RELAY1, 0);
+				printf("[vRegulator] Relay off\n");
+			}
+			average = 0;
 		}
 		else
 		{
 			gpio_set_level(GPIO_RELAY1, 0);
 			printf("[vRegulator] Relay off - 1-wire device not detected(1) or sensors = 0 or short_detected = %d\n", short_detected);
 		}
-			
-		
 	}
 	vTaskDelete(NULL);
 }
