@@ -66,8 +66,15 @@ xTaskHandle xRead_Temp_Handle; // identification Read Temp task
 
 static xQueueHandle gpio_evt_queue = NULL;
 static xQueueHandle ENC_queue = NULL;
-static xQueueHandle found_sensor_queue = NULL;
+static xQueueHandle data_to_display_queue = NULL;
 static xQueueHandle dataFromDisplay_queue = NULL;
+
+
+typedef struct{
+	uint8_t sensors;
+	uint8_t status_relay;
+	float temp_average;
+} data_to_display_t;
 
 
 
@@ -172,8 +179,7 @@ void vDisplay(void *pvParameter)
 	portBASE_TYPE xStatusReceive;
 	portBASE_TYPE xStatusSend;
 	enum action rotate;
-	uint8_t sensors = 0;
-
+	data_to_display_t data_to_display;
 	
 	
 	uint8_t state = 10; // default state
@@ -197,19 +203,19 @@ void vDisplay(void *pvParameter)
 	printf("state = 10\n");
 	
 	
-	/***** sensors ***********************/
-		xStatusReceive = xQueueReceive(found_sensor_queue, &sensors, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
+	
+	
+    while(1) {
+		/***** data ***********************/
+		xStatusReceive = xQueueReceive(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
 		if(xStatusReceive == pdPASS)
 		{
 
 			change = 1;
-			printf("[vDisplay] sensors = %x\n", sensors);
-			
+			printf("[vDisplay]Receivied data / sensors = %d / status_relay = %d / temp_averag = %f *C\n", data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average);
 		}
 		
-	/***** End Read temperature ********************/
-	
-    while(1) {
+		/***********************/
 		down_cw = 0;
 		up_ccw = 0;
 		press_button = 0;	
@@ -218,7 +224,7 @@ void vDisplay(void *pvParameter)
 		if(change)
 		{
 			
-			vDrawMenu(menuitem, state, selectRelay, temp, contrast, chip_info, sensors);
+			vDrawMenu(menuitem, state, temp, contrast, chip_info, data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average);
 			change = 0;
 		}
 
@@ -628,6 +634,7 @@ static void vRegulator(void* arg)
 	uint8_t rslt = 0;
 	float average = 0;
 	float sum = 0;
+	uint8_t status_relay = 0;
 	uint8_t checksum = 0;
 	uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
 	
@@ -636,7 +643,7 @@ static void vRegulator(void* arg)
 	int k;
 	int n;
 	int l;
-	
+	data_to_display_t data_to_display;
 	
 	uint8_t sensors = 0;
 	uint8_t ust = 22;
@@ -675,7 +682,7 @@ static void vRegulator(void* arg)
 				rslt = OWNext();
 				//printf("result OWNext() = %d\n", rslt);
 			}
-			xQueueSendToBack(found_sensor_queue, &sensors, 100/portTICK_RATE_MS);
+			
 			printf("sensors = %d \n", sensors);
 			printf("1-wire device end find ************ \n");
 			
@@ -723,6 +730,7 @@ static void vRegulator(void* arg)
 		printf("**********************Cycle**********************************\n");
 		if(OWReset() && !short_detected && sensors > 0)
 		{
+			
 			OWWriteByte(SkipROM); //0xCC - пропуск проверки адресов
 			printf("SkipROM\n");
 			OWWriteByte(ConvertT); //0x44 - все датчики измеряют свою температуру
@@ -791,6 +799,7 @@ static void vRegulator(void* arg)
 				}
 				else{
 					gpio_set_level(GPIO_RELAY1, 0);
+					status_relay = 0;
 					printf("[vRegulator] Relay off - 1-wire device not detected(2) or short_detected = %d\n", short_detected);
 				}
 			}
@@ -811,18 +820,26 @@ static void vRegulator(void* arg)
 			// controller temp
 			if(average < ust - delta){
 				gpio_set_level(GPIO_RELAY1, 1);
+				status_relay = 1;
 				printf("[vRegulator] Relay on\n");
 			}
 						
 			if(average > ust + delta){
 				gpio_set_level(GPIO_RELAY1, 0);
+				status_relay = 0;
 				printf("[vRegulator] Relay off\n");
 			}
+			
+			data_to_display.sensors = sensors;
+			data_to_display.status_relay =  status_relay;
+			data_to_display.temp_average = average;
+			xQueueSendToBack(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS);
 			average = 0;
 		}
 		else
 		{
 			gpio_set_level(GPIO_RELAY1, 0);
+			status_relay = 0;
 			printf("[vRegulator] Relay off - 1-wire device not detected(1) or sensors = 0 or short_detected = %d\n", short_detected);
 		}
 	}
@@ -871,13 +888,13 @@ void app_main()
 	
 	
 	//create a queue to handle gpio event from isr
-    gpio_evt_queue = xQueueCreate(5, sizeof(uint32_t));
+    gpio_evt_queue = xQueueCreate(7, sizeof(uint32_t));
     //start gpio task
     xTaskCreate(ENC, "ENC", 1548, NULL, 12, NULL);
 	
 	ENC_queue = xQueueCreate(10, sizeof(uint32_t));
 
-	found_sensor_queue = xQueueCreate(2, sizeof(uint8_t));
+	data_to_display_queue = xQueueCreate(3, sizeof(data_to_display_t));
 	
 	dataFromDisplay_queue = xQueueCreate(8, sizeof(uint8_t)); // ustavka
 	

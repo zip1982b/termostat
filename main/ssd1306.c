@@ -531,7 +531,7 @@ void vSetContrast(uint8_t contrast) {
 	//SSD1306_WRITECOMMAND(0x);  
 }
 
-void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info, uint8_t sensors)
+void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info, uint8_t sensors, uint8_t status_relay, float temp_average)
 {
 	char menuItem1[] = "Found sensors";
 	char menuItem2[] = "Set temp";
@@ -760,11 +760,17 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, int selectRelay, uint8_t temp, u
 		SSD1306_Puts(menuItem3, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
 		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
 		SSD1306_GotoXY(5, 15);
-		SSD1306_Puts("Relay ON", &Font_7x10, SSD1306_COLOR_WHITE);
-		//SSD1306_GotoXY(5, 35);
-		//SSD1306_Puts(, &Font_11x18, SSD1306_COLOR_WHITE);
+		if(status_relay)
+			SSD1306_Puts("Relay ON", &Font_7x10, SSD1306_COLOR_WHITE);
+		else
+			SSD1306_Puts("Relay OFF", &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 35);
-		SSD1306_Puts("t = 35 C", &Font_7x10, SSD1306_COLOR_WHITE);
+		SSD1306_Puts("t = ", &Font_7x10, SSD1306_COLOR_WHITE);
+		
+		char buf[18];
+		sprintf(buf, "%5.5f", temp_average);
+		SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
+		SSD1306_Puts("*C", &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 	
