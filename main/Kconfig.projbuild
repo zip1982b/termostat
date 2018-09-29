@@ -1,0 +1,91 @@
+menu "WiFi Configuration"
+
+config WIFI_SSID
+    string "WiFi SSID"
+	default "myssid"
+	help
+		SSID (network name) for the WiFi to connect to.
+
+config WIFI_PASSWORD
+    string "WiFi Password"
+	default "mypassword"
+	help
+		WiFi password (WPA or WPA2) for the WiFi to use.
+
+		Can be left blank if the network has no security set.
+
+choice WiFi_IP_MODE
+    prompt "Multicast IP type"
+    help
+       WiFi can multicast IPV4, IPV6, or both.
+
+config WiFi_IPV4_V6
+    bool "IPV4 & IPV6"
+    select WiFi_IPV4
+    select WiFi_IPV6
+
+config WiFi_IPV4_ONLY
+    bool "IPV4"
+    select WiFi_IPV4
+
+config WiFi_IPV6_ONLY
+   bool "IPV6"
+    select WiFi_IPV6
+
+endchoice
+
+config WiFi_IPV4
+    bool
+config WiFi_IPV6
+    bool
+
+config WiFi_MULTICAST_IPV4_ADDR
+    string "Multicast IPV4 Address (send & receive)"
+    default "232.10.11.12"
+    depends on WiFi_IPV4
+    help
+       IPV4 multicast address. WiFi will both send to and listen to this address.
+
+config WiFi_MULTICAST_IPV6_ADDR
+    string "Multicast IPV6 Address (send & receive)"
+    default "FF02::FC"
+    depends on WiFi_IPV6
+    help
+       IPV6 multicast address. WiFi will both send to and listen to this address.
+
+       The default FF02::FC address is a link-local multicast address. Consult IPV6 specifications or documentation for information about meaning of different IPV6 multicast ranges.
+
+config WiFi_PORT
+    int "Multicast port (send & receive)"
+    range 0 65535
+    default 3333
+    help
+        Multicast port the WiFi will both send & receive UDP packets on.
+
+config WiFi_LOOPBACK
+    bool "Multicast loopback"
+    help
+        Enables IP_MULTICAST_LOOP/IPV6_MULTICAST_LOOP options, meaning
+        that packets transmitted from the device are also received by the
+        device itself.
+
+config WiFi_MULTICAST_TTL
+    int  "Multicast packet TTL"
+    range 1 255
+    help
+        Sets TTL field of multicast packets. Separate from uni- & broadcast TTL.
+
+choice WiFi_MULTICAST_IF
+    prompt "Multicast Interface"
+    help
+       Multicast socket can bind to default interface, or all interfaces.
+
+config WiFi_MULTICAST_LISTEN_DEFAULT_IF
+    bool "Default interface"
+
+config WiFi_MULTICAST_LISTEN_STA_IF
+    bool "WiFi STA interface"
+
+endchoice
+
+endmenu
