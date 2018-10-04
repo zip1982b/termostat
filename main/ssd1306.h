@@ -252,7 +252,7 @@ void SSD1306_DrawFilledCircle(int16_t x0, int16_t y0, int16_t r, SSD1306_COLOR_t
 void vDisplayMenuItem(char *item, uint8_t position, uint8_t selected);
 
 
-void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info, uint8_t sensors, uint8_t status_relay, float temp_average);
+void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info, uint8_t sensors, uint8_t status_relay, float temp_average); //, char IP, char Mask, char GW
 
 void vSetContrast(uint8_t contrast);
 

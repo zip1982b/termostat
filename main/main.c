@@ -29,6 +29,8 @@ Autor: zip1982b
 #include "freertos/queue.h"
 
 
+
+
 #include "ssd1306.h"
 #include "ds2482.h"
 
@@ -108,9 +110,6 @@ static const char *V6TAG = "mcast-ipv6";
 
 
 
-
-
-
 portBASE_TYPE xStatusOLED;
 portBASE_TYPE xStatusReadTemp; // status task create
 
@@ -127,6 +126,9 @@ typedef struct{
 	uint8_t sensors;
 	uint8_t status_relay;
 	float temp_average;
+	char IP[17];
+	char Mask[17];
+	char GW[17];
 } data_to_display_t;
 
 
@@ -143,7 +145,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
     switch(event->event_id) {
     case SYSTEM_EVENT_STA_START:
-        esp_wifi_connect();
+        esp_wifi_connect(); 
         break;
     case SYSTEM_EVENT_STA_CONNECTED:
         /* enable ipv6 */
@@ -315,7 +317,7 @@ void vDisplay(void *pvParameter)
 		{
 
 			change = 1;
-			printf("[vDisplay]Receivied data / sensors = %d / status_relay = %d / temp_averag = %f *C\n", data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average);
+			printf("[vDisplay]Receivied data / sensors = %d / status_relay = %d / temp_averag = %f *C / IP: %s, Mask: %s, GW: %s\n", data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average, data_to_display.IP, data_to_display.Mask, data_to_display.GW);
 		}
 		
 		/***********************/
@@ -327,7 +329,7 @@ void vDisplay(void *pvParameter)
 		if(change)
 		{
 			
-			vDrawMenu(menuitem, state, temp, contrast, chip_info, data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average);
+			vDrawMenu(menuitem, state, temp, contrast, chip_info, data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average);//, data_to_display.IP, data_to_display.Mask, data_to_display.GW
 			change = 0;
 		}
 
@@ -1005,13 +1007,21 @@ static int socket_add_ipv4_multicast_group(int sock, bool assign_source_if)
 }
 #endif /* CONFIG_WiFi_IPV4 */
 
+
+
+
+
+
+
+
 #ifdef CONFIG_WiFi_IPV4_ONLY
 static int create_multicast_ipv4_socket()
 {
+	data_to_display_t data_to_display;
     struct sockaddr_in saddr = { 0 };
     int sock = -1;
     int err = 0;
-
+	char* IP;
     sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (sock < 0) {
         ESP_LOGE(V4TAG, "Failed to create socket. Error %d", errno);
@@ -1022,6 +1032,33 @@ static int create_multicast_ipv4_socket()
     saddr.sin_family = PF_INET;
     saddr.sin_port = htons(UDP_PORT);
     saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	
+	
+	/* ****************************************************************** */
+	tcpip_adapter_ip_info_t ip_info = { 0 };
+	err = tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
+	if (err != ESP_OK) {
+		ESP_LOGE(V4TAG, "Failed to get IP address info. Error 0x%x", err);
+	}
+	ESP_LOGI(V4TAG, "address server IP: %s", ip4addr_ntoa(&ip_info.ip));
+	ESP_LOGI(V4TAG, "netmask server: %s", ip4addr_ntoa(&ip_info.netmask));
+	ESP_LOGI(V4TAG, "gateway IP: %s", ip4addr_ntoa(&ip_info.gw));
+	/*
+	data_to_display.IP = ip4addr_ntoa(&ip_info.ip);
+	data_to_display.Mask =  ip4addr_ntoa(&ip_info.netmask);
+	data_to_display.GW = ip4addr_ntoa(&ip_info.gw);
+	*/
+	
+	
+	IP = ip4addr_ntoa(&ip_info.ip);
+	printf("ip = %c%c%c\n", *IP, *(IP+1), *(IP+2));
+	
+	
+	
+	//xQueueSendToBack(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS); //add error handler 
+	/**********************************************************************/
+		
+	
     err = bind(sock, (struct sockaddr *)&saddr, sizeof(struct sockaddr_in));
     if (err < 0) {
         ESP_LOGE(V4TAG, "Failed to bind socket. Error %d", errno);
@@ -1064,6 +1101,23 @@ err:
     return -1;
 }
 #endif /* CONFIG_WiFi_IPV4_ONLY */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #ifdef CONFIG_WiFi_IPV6
 static int create_multicast_ipv6_socket()
@@ -1197,24 +1251,66 @@ err:
 }
 #endif
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static void mcast_example_task(void *pvParameters)
 {
     while (1) {
         /* Wait for all the IPs we care about to be set
         */
         uint32_t bits = 0;
+		
+		
+		
+		
+		
+		
 #ifdef CONFIG_WiFi_IPV4
         bits |= IPV4_GOTIP_BIT;
 #endif
 #ifdef CONFIG_WiFi_IPV6
         bits |= IPV6_GOTIP_BIT;
 #endif
+
+
+
+
+
+
         ESP_LOGI(TAG, "Waiting for AP connection...");
         xEventGroupWaitBits(wifi_event_group, bits, false, true, portMAX_DELAY);
         ESP_LOGI(TAG, "Connected to AP");
 
         int sock;
 
+		
+		
+		
+		
+		
 #ifdef CONFIG_WiFi_IPV4_ONLY
         sock = create_multicast_ipv4_socket(); ///////////////////////////////////////////////************************** create_multicast_ipv4_socket() ***************** ///////////////////////////////
         if (sock < 0) {
@@ -1227,11 +1323,36 @@ static void mcast_example_task(void *pvParameters)
         }
 #endif
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if (sock < 0) {
             // Nothing to do!
             vTaskDelay(5 / portTICK_PERIOD_MS);
             continue;
         }
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 
 #ifdef CONFIG_WiFi_IPV4
         // set destination multicast addresses for sending from these sockets
@@ -1243,6 +1364,9 @@ static void mcast_example_task(void *pvParameters)
         inet_aton(MULTICAST_IPV4_ADDR, &sdestv4.sin_addr.s_addr);
 #endif
 
+
+
+
 #ifdef CONFIG_WiFi_IPV6
         struct sockaddr_in6 sdestv6 = {
             .sin6_family = PF_INET6,
@@ -1252,9 +1376,21 @@ static void mcast_example_task(void *pvParameters)
         inet6_aton(MULTICAST_IPV6_ADDR, &sdestv6.sin6_addr);
 #endif
 
+
+
+
+
+
+
+
+
+
         // Loop waiting for UDP received, and sending UDP packets if we don't
         // see any.
         int err = 1;
+		
+		
+		
         while (err > 0) {
             struct timeval tv = {
                 .tv_sec = 2,
@@ -1265,6 +1401,13 @@ static void mcast_example_task(void *pvParameters)
             FD_SET(sock, &rfds);
 
             int s = select(sock + 1, &rfds, NULL, NULL, &tv);
+			
+			
+			
+			
+			
+			
+			
             if (s < 0) {
                 ESP_LOGE(TAG, "Select failed: errno %d", errno);
                 err = -1;
