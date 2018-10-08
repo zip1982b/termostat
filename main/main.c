@@ -131,7 +131,34 @@ typedef struct{
 	char GW[17];
 } data_to_display_t;
 
+/**
+ * @brief test function to show buffer
+ */
+static void disp_buf(char* buf, int len)
+{
+	
+    int i;
+    for (i = 0; i < len; i++){
+		if(buf[i] != '\0'){
+			printf("%c", buf[i]);
+		}
+		else
+			break;
+    }
+    printf("\n");
+}
 
+
+/**
+ * @brief copy IP to buffer
+ */
+static void copy_buf(char* IPbuf, int len, char* bufIP)
+{
+    int i;
+    for (i = 0; i < len; i++) {
+		bufIP[i] = IPbuf[i];
+    }
+}
 
 
 
@@ -1021,7 +1048,12 @@ static int create_multicast_ipv4_socket()
     struct sockaddr_in saddr = { 0 };
     int sock = -1;
     int err = 0;
-	char* IP;
+	
+	
+	
+	
+	
+	
     sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (sock < 0) {
         ESP_LOGE(V4TAG, "Failed to create socket. Error %d", errno);
@@ -1034,30 +1066,7 @@ static int create_multicast_ipv4_socket()
     saddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	
 	
-	/* ****************************************************************** */
-	tcpip_adapter_ip_info_t ip_info = { 0 };
-	err = tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
-	if (err != ESP_OK) {
-		ESP_LOGE(V4TAG, "Failed to get IP address info. Error 0x%x", err);
-	}
-	ESP_LOGI(V4TAG, "address server IP: %s", ip4addr_ntoa(&ip_info.ip));
-	ESP_LOGI(V4TAG, "netmask server: %s", ip4addr_ntoa(&ip_info.netmask));
-	ESP_LOGI(V4TAG, "gateway IP: %s", ip4addr_ntoa(&ip_info.gw));
-	/*
-	data_to_display.IP = ip4addr_ntoa(&ip_info.ip);
-	data_to_display.Mask =  ip4addr_ntoa(&ip_info.netmask);
-	data_to_display.GW = ip4addr_ntoa(&ip_info.gw);
-	*/
 	
-	
-	IP = ip4addr_ntoa(&ip_info.ip);
-	printf("ip = %c%c%c\n", *IP, *(IP+1), *(IP+2));
-	
-	
-	
-	//xQueueSendToBack(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS); //add error handler 
-	/**********************************************************************/
-		
 	
     err = bind(sock, (struct sockaddr *)&saddr, sizeof(struct sockaddr_in));
     if (err < 0) {
@@ -1278,15 +1287,26 @@ err:
 
 static void mcast_example_task(void *pvParameters)
 {
+	char* IP;
+	char* MASK;
+	char* GW;
+	
+	static char bufIP[IP4ADDR_STRLEN_MAX] = { 0 };
+	char* buf_ip;
+	buf_ip = &bufIP[0];
+	
+	static char bufMASK[IP4ADDR_STRLEN_MAX] = { 0 };
+	char* buf_mask;
+	buf_mask = &bufMASK[0];
+	
+	static char bufGW[IP4ADDR_STRLEN_MAX] = { 0 };
+	char* buf_gw;
+	buf_gw = &bufGW[0];
+	
     while (1) {
         /* Wait for all the IPs we care about to be set
         */
         uint32_t bits = 0;
-		
-		
-		
-		
-		
 		
 #ifdef CONFIG_WiFi_IPV4
         bits |= IPV4_GOTIP_BIT;
@@ -1294,11 +1314,6 @@ static void mcast_example_task(void *pvParameters)
 #ifdef CONFIG_WiFi_IPV6
         bits |= IPV6_GOTIP_BIT;
 #endif
-
-
-
-
-
 
         ESP_LOGI(TAG, "Waiting for AP connection...");
         xEventGroupWaitBits(wifi_event_group, bits, false, true, portMAX_DELAY);
@@ -1324,33 +1339,43 @@ static void mcast_example_task(void *pvParameters)
 #endif
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
         if (sock < 0) {
             // Nothing to do!
             vTaskDelay(5 / portTICK_PERIOD_MS);
             continue;
         }
 		
+		/* ****************************************************************** */
+		tcpip_adapter_ip_info_t ip_info = { 0 };
+		tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
+		
+		//ESP_LOGI(V4TAG, "address server IP: %s", ip4addr_ntoa(&ip_info.ip));
+		//ESP_LOGI(V4TAG, "netmask server: %s", ip4addr_ntoa(&ip_info.netmask));
+		ESP_LOGI(V4TAG, "gateway IP: %s", ip4addr_ntoa(&ip_info.gw));
+		
+		
+		/*
+		data_to_display.IP = ip4addr_ntoa(&ip_info.ip);
+		data_to_display.Mask =  ip4addr_ntoa(&ip_info.netmask);
+		data_to_display.GW = ip4addr_ntoa(&ip_info.gw);*/
+		
+		IP = ip4addr_ntoa(&ip_info.ip);
+		copy_buf(IP, IP4ADDR_STRLEN_MAX, buf_ip);
+		disp_buf(buf_ip, IP4ADDR_STRLEN_MAX);
+		
+		MASK = ip4addr_ntoa(&ip_info.netmask);
+		copy_buf(MASK, IP4ADDR_STRLEN_MAX, buf_mask);
+		disp_buf(buf_mask, IP4ADDR_STRLEN_MAX);
+		
+		GW = ip4addr_ntoa(&ip_info.gw);
+		copy_buf(GW, IP4ADDR_STRLEN_MAX, buf_gw);
+		disp_buf(buf_gw, IP4ADDR_STRLEN_MAX);
 		
 		
 		
 		
-		
-		
-		
-		
+		//xQueueSendToBack(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS); //add error handler 
+	/**********************************************************************/
 		
 		
 
@@ -1524,7 +1549,7 @@ static void mcast_example_task(void *pvParameters)
 #endif
             }
         }
-
+		
         ESP_LOGE(TAG, "Shutting down socket and restarting...");
         shutdown(sock, 0);
         close(sock);
