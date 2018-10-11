@@ -118,7 +118,8 @@ xTaskHandle xRead_Temp_Handle; // identification Read Temp task
 
 static xQueueHandle gpio_evt_queue = NULL;
 static xQueueHandle ENC_queue = NULL;
-static xQueueHandle data_to_display_queue = NULL;
+static xQueueHandle data_from_regulator_queue = NULL;
+static xQueueHandle data_from_udp_server_queue = NULL;
 static xQueueHandle dataFromDisplay_queue = NULL;
 
 
@@ -126,10 +127,13 @@ typedef struct{
 	uint8_t sensors;
 	uint8_t status_relay;
 	float temp_average;
-	char IP[17];
-	char Mask[17];
-	char GW[17];
-} data_to_display_t;
+} data_from_regulator_t;
+
+typedef struct{
+	char* pIP;
+	char* pMask;
+	char* pGW;
+} data_from_udp_server_t;
 
 /**
  * @brief test function to show buffer
@@ -150,13 +154,13 @@ static void disp_buf(char* buf, int len)
 
 
 /**
- * @brief copy IP to buffer
+ * @brief copy buf1 to buf2
  */
-static void copy_buf(char* IPbuf, int len, char* bufIP)
+static void copy_buf(char* buf1, int len, char* buf2)
 {
     int i;
     for (i = 0; i < len; i++) {
-		bufIP[i] = IPbuf[i];
+		buf2[i] = buf1[i]; // or *(buf2+i) = *(buf1+i)
     }
 }
 
@@ -196,6 +200,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
+
 static void initialise_wifi(void)
 {
     tcpip_adapter_init();
@@ -215,10 +220,6 @@ static void initialise_wifi(void)
     ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_ERROR_CHECK( esp_wifi_start() );
 }
-
-
-
-
 
 
 
@@ -298,8 +299,6 @@ static void ENC(void* arg)
 
 
 
-
-
 void vDisplay(void *pvParameter)
 {
 	i2c_master_init(I2C_MASTER_NUM_SSD1306, I2C_MASTER_SDA_SSD1306, I2C_MASTER_SCL_SSD1306, I2C_MASTER_FREQ_HZ_SSD1306, I2C_MASTER_RX_BUF_SSD1306, I2C_MASTER_TX_BUF_SSD1306);
@@ -311,8 +310,9 @@ void vDisplay(void *pvParameter)
 	portBASE_TYPE xStatusReceive;
 	portBASE_TYPE xStatusSend;
 	enum action rotate;
-	data_to_display_t data_to_display;
 	
+	data_from_regulator_t data_from_regulator;
+	data_from_udp_server_t data_from_udp_server;
 	
 	uint8_t state = 10; // default state
 	uint8_t frame = 1;
@@ -338,14 +338,23 @@ void vDisplay(void *pvParameter)
 	
 	
     while(1) {
-		/***** data ***********************/
-		xStatusReceive = xQueueReceive(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
+		/***** data from Regulator ***********************/
+		xStatusReceive = xQueueReceive(data_from_regulator_queue, &data_from_regulator, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
 		if(xStatusReceive == pdPASS)
 		{
-
 			change = 1;
-			printf("[vDisplay]Receivied data / sensors = %d / status_relay = %d / temp_averag = %f *C / IP: %s, Mask: %s, GW: %s\n", data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average, data_to_display.IP, data_to_display.Mask, data_to_display.GW);
+			printf("[vDisplay]Receivied data from regulator/ sensors = %d / status_relay = %d / temp_averag = %f *C \n", data_from_regulator.sensors, data_from_regulator.status_relay, data_from_regulator.temp_average);
 		}
+		
+		/******* data from UDP Server *******************/
+		xStatusReceive = xQueueReceive(data_from_udp_server_queue, &data_from_udp_server, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
+		if(xStatusReceive == pdPASS)
+		{
+			change = 1;
+			printf("[vDisplay]Receivied data from UDP Server: pointer IP %p, pointer Mask %p, pointer GW %p\n", data_from_udp_server.pIP, data_from_udp_server.pMask, data_from_udp_server.pGW);
+		}
+		
+		
 		
 		/***********************/
 		down_cw = 0;
@@ -356,7 +365,7 @@ void vDisplay(void *pvParameter)
 		if(change)
 		{
 			
-			vDrawMenu(menuitem, state, temp, contrast, chip_info, data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average);//, data_to_display.IP, data_to_display.Mask, data_to_display.GW
+			vDrawMenu(menuitem, state, temp, contrast, chip_info, data_from_regulator.sensors, data_from_regulator.status_relay, data_from_regulator.temp_average);//, data_to_display.IP, data_to_display.Mask, data_to_display.GW
 			change = 0;
 		}
 
@@ -775,7 +784,7 @@ static void vRegulator(void* arg)
 	int k;
 	int n;
 	int l;
-	data_to_display_t data_to_display;
+	data_from_regulator_t data_to_display;
 	
 	uint8_t sensors = 0;
 	uint8_t ust = 22;
@@ -965,7 +974,7 @@ static void vRegulator(void* arg)
 			data_to_display.sensors = sensors;
 			data_to_display.status_relay =  status_relay;
 			data_to_display.temp_average = average;
-			xQueueSendToBack(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS);
+			xQueueSendToBack(data_from_regulator_queue, &data_to_display, 100/portTICK_RATE_MS);
 			average = 0;
 		}
 		else
@@ -1044,7 +1053,6 @@ static int socket_add_ipv4_multicast_group(int sock, bool assign_source_if)
 #ifdef CONFIG_WiFi_IPV4_ONLY
 static int create_multicast_ipv4_socket()
 {
-	data_to_display_t data_to_display;
     struct sockaddr_in saddr = { 0 };
     int sock = -1;
     int err = 0;
@@ -1270,38 +1278,25 @@ err:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-static void mcast_example_task(void *pvParameters)
+static void udp_server(void *pvParameters)
 {
-	char* IP;
-	char* MASK;
-	char* GW;
+	char* pIP;
+	char* pMASK;
+	char* pGW;
+	
+	data_from_udp_server_t data_to_display;
 	
 	static char bufIP[IP4ADDR_STRLEN_MAX] = { 0 };
-	char* buf_ip;
-	buf_ip = &bufIP[0];
+	char* pbuf_ip;
+	pbuf_ip = &bufIP[0];
 	
 	static char bufMASK[IP4ADDR_STRLEN_MAX] = { 0 };
-	char* buf_mask;
-	buf_mask = &bufMASK[0];
+	char* pbuf_mask;
+	pbuf_mask = &bufMASK[0];
 	
 	static char bufGW[IP4ADDR_STRLEN_MAX] = { 0 };
-	char* buf_gw;
-	buf_gw = &bufGW[0];
+	char* pbuf_gw;
+	pbuf_gw = &bufGW[0];
 	
     while (1) {
         /* Wait for all the IPs we care about to be set
@@ -1349,32 +1344,25 @@ static void mcast_example_task(void *pvParameters)
 		tcpip_adapter_ip_info_t ip_info = { 0 };
 		tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
 		
-		//ESP_LOGI(V4TAG, "address server IP: %s", ip4addr_ntoa(&ip_info.ip));
-		//ESP_LOGI(V4TAG, "netmask server: %s", ip4addr_ntoa(&ip_info.netmask));
-		ESP_LOGI(V4TAG, "gateway IP: %s", ip4addr_ntoa(&ip_info.gw));
+		pIP = ip4addr_ntoa(&ip_info.ip);
+		copy_buf(pIP, IP4ADDR_STRLEN_MAX, pbuf_ip);
+		//disp_buf(buf_ip, IP4ADDR_STRLEN_MAX);
 		
+		pMASK = ip4addr_ntoa(&ip_info.netmask);
+		copy_buf(pMASK, IP4ADDR_STRLEN_MAX, pbuf_mask);
+		//disp_buf(buf_mask, IP4ADDR_STRLEN_MAX);
 		
-		/*
-		data_to_display.IP = ip4addr_ntoa(&ip_info.ip);
-		data_to_display.Mask =  ip4addr_ntoa(&ip_info.netmask);
-		data_to_display.GW = ip4addr_ntoa(&ip_info.gw);*/
-		
-		IP = ip4addr_ntoa(&ip_info.ip);
-		copy_buf(IP, IP4ADDR_STRLEN_MAX, buf_ip);
-		disp_buf(buf_ip, IP4ADDR_STRLEN_MAX);
-		
-		MASK = ip4addr_ntoa(&ip_info.netmask);
-		copy_buf(MASK, IP4ADDR_STRLEN_MAX, buf_mask);
-		disp_buf(buf_mask, IP4ADDR_STRLEN_MAX);
-		
-		GW = ip4addr_ntoa(&ip_info.gw);
-		copy_buf(GW, IP4ADDR_STRLEN_MAX, buf_gw);
-		disp_buf(buf_gw, IP4ADDR_STRLEN_MAX);
+		pGW = ip4addr_ntoa(&ip_info.gw);
+		copy_buf(pGW, IP4ADDR_STRLEN_MAX, pbuf_gw);
+		//disp_buf(buf_gw, IP4ADDR_STRLEN_MAX);
 		
 		
 		
+		data_to_display.pIP = pbuf_ip;
+		data_to_display.pMask = pbuf_mask;
+		data_to_display.pGW = pbuf_gw;
 		
-		//xQueueSendToBack(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS); //add error handler 
+		xQueueSendToBack(data_from_udp_server_queue, &data_to_display, 100/portTICK_RATE_MS); //add error handler 
 	/**********************************************************************/
 		
 		
@@ -1563,7 +1551,7 @@ void app_main()
 {
 	ESP_ERROR_CHECK(nvs_flash_init());
     initialise_wifi();
-    xTaskCreate(&mcast_example_task, "mcast_task", 4096, NULL, 5, NULL);
+    xTaskCreate(&udp_server, "mcast_task", 4096, NULL, 5, NULL);
 	
 	
 	/*** GPIO init ***/
@@ -1611,7 +1599,8 @@ void app_main()
 	
 	ENC_queue = xQueueCreate(10, sizeof(uint32_t));
 
-	data_to_display_queue = xQueueCreate(3, sizeof(data_to_display_t));
+	data_from_regulator_queue = xQueueCreate(3, sizeof(data_from_regulator_t));
+	data_from_udp_server_queue = xQueueCreate(3, sizeof(data_from_udp_server_t));
 	
 	dataFromDisplay_queue = xQueueCreate(8, sizeof(uint8_t)); // ustavka
 	
