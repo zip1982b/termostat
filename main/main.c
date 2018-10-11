@@ -339,24 +339,25 @@ void vDisplay(void *pvParameter)
 	
     while(1) {
 		/***** data from Regulator ***********************/
-		xStatusReceive = xQueueReceive(data_from_regulator_queue, &data_from_regulator, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
+		xStatusReceive = xQueueReceive(data_from_regulator_queue, &data_from_regulator, 100/portTICK_RATE_MS); // portMAX_DELAY - (infinity) сколь угодно долго
 		if(xStatusReceive == pdPASS)
 		{
 			change = 1;
 			printf("[vDisplay]Receivied data from regulator/ sensors = %d / status_relay = %d / temp_averag = %f *C \n", data_from_regulator.sensors, data_from_regulator.status_relay, data_from_regulator.temp_average);
 		}
-		
+		/**************************/
 		/******* data from UDP Server *******************/
-		xStatusReceive = xQueueReceive(data_from_udp_server_queue, &data_from_udp_server, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
+		xStatusReceive = xQueueReceive(data_from_udp_server_queue, &data_from_udp_server, 100/portTICK_RATE_MS); // portMAX_DELAY - (infinity) сколь угодно долго 
 		if(xStatusReceive == pdPASS)
 		{
 			change = 1;
-			printf("[vDisplay]Receivied data from UDP Server: pointer IP %p, pointer Mask %p, pointer GW %p\n", data_from_udp_server.pIP, data_from_udp_server.pMask, data_from_udp_server.pGW);
+			disp_buf(data_from_udp_server.pIP, IP4ADDR_STRLEN_MAX);
+			disp_buf(data_from_udp_server.pMask, IP4ADDR_STRLEN_MAX);
+			disp_buf(data_from_udp_server.pGW, IP4ADDR_STRLEN_MAX);
 		}
+		/**************************/
 		
 		
-		
-		/***********************/
 		down_cw = 0;
 		up_ccw = 0;
 		press_button = 0;	
@@ -364,8 +365,7 @@ void vDisplay(void *pvParameter)
 
 		if(change)
 		{
-			
-			vDrawMenu(menuitem, state, temp, contrast, chip_info, data_from_regulator.sensors, data_from_regulator.status_relay, data_from_regulator.temp_average);//, data_to_display.IP, data_to_display.Mask, data_to_display.GW
+			vDrawMenu(menuitem, state, temp, contrast, chip_info, data_from_regulator.sensors, data_from_regulator.status_relay, data_from_regulator.temp_average, data_from_udp_server.pIP, data_from_udp_server.pMask, data_from_udp_server.pGW);
 			change = 0;
 		}
 
@@ -989,6 +989,9 @@ static void vRegulator(void* arg)
 
 
 
+
+
+
 #ifdef CONFIG_WiFi_IPV4
 /* Add a socket, either IPV4-only or IPV6 dual mode, to the IPV4
    multicast group */
@@ -1042,13 +1045,6 @@ static int socket_add_ipv4_multicast_group(int sock, bool assign_source_if)
     return err;
 }
 #endif /* CONFIG_WiFi_IPV4 */
-
-
-
-
-
-
-
 
 #ifdef CONFIG_WiFi_IPV4_ONLY
 static int create_multicast_ipv4_socket()
@@ -1118,23 +1114,6 @@ err:
     return -1;
 }
 #endif /* CONFIG_WiFi_IPV4_ONLY */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #ifdef CONFIG_WiFi_IPV6
 static int create_multicast_ipv6_socket()

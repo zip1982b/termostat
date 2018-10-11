@@ -531,7 +531,7 @@ void vSetContrast(uint8_t contrast) {
 	//SSD1306_WRITECOMMAND(0x);  
 }
 
-void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info, uint8_t sensors, uint8_t status_relay, float temp_average)//, char IP, char Mask, char GW
+void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info, uint8_t sensors, uint8_t status_relay, float temp_average, char* pIP, char* pMask, char* pGW)
 {
 	char menuItem1[] = "Found sensors";
 	char menuItem2[] = "Set temp";
@@ -807,15 +807,21 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, 
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem5, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
 		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
+		
+		
 		SSD1306_GotoXY(5, 15);
-		SSD1306_Puts("IP: ", &Font_7x10, SSD1306_COLOR_WHITE);
-		//SSD1306_Puts(&IP, &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts("IP:", &Font_7x10, SSD1306_COLOR_WHITE);
+		SSD1306_Puts(pIP, &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 27);
 		SSD1306_Puts("mask:", &Font_7x10, SSD1306_COLOR_WHITE);
-		//SSD1306_Puts(&Mask, &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts(pMask, &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 37);
 		SSD1306_Puts("gw:", &Font_7x10, SSD1306_COLOR_WHITE);
-		//SSD1306_Puts(&GW, &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts(pGW, &Font_7x10, SSD1306_COLOR_WHITE);
+		
+		
+		
+		
 		SSD1306_UpdateScreen();
 	}
 	
