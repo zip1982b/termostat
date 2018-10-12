@@ -1055,9 +1055,6 @@ static int create_multicast_ipv4_socket()
 	
 	
 	
-	
-	
-	
     sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (sock < 0) {
         ESP_LOGE(V4TAG, "Failed to create socket. Error %d", errno);
@@ -1250,13 +1247,6 @@ err:
 
 
 
-
-
-
-
-
-
-
 static void udp_server(void *pvParameters)
 {
 	char* pIP;
@@ -1294,14 +1284,9 @@ static void udp_server(void *pvParameters)
         ESP_LOGI(TAG, "Connected to AP");
 
         int sock;
-
-		
-		
-		
-		
 		
 #ifdef CONFIG_WiFi_IPV4_ONLY
-        sock = create_multicast_ipv4_socket(); ///////////////////////////////////////////////************************** create_multicast_ipv4_socket() ***************** ///////////////////////////////
+        sock = create_multicast_ipv4_socket(); //////********** create_multicast_ipv4_socket() ********* ////////////
         if (sock < 0) {
             ESP_LOGE(TAG, "Failed to create IPv4 multicast socket");
         }
@@ -1371,12 +1356,6 @@ static void udp_server(void *pvParameters)
 
 
 
-
-
-
-
-
-
         // Loop waiting for UDP received, and sending UDP packets if we don't
         // see any.
         int err = 1;
@@ -1393,11 +1372,6 @@ static void udp_server(void *pvParameters)
             FD_SET(sock, &rfds);
 
             int s = select(sock + 1, &rfds, NULL, NULL, &tv);
-			
-			
-			
-			
-			
 			
 			
             if (s < 0) {
