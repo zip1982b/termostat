@@ -847,7 +847,7 @@ static void vRegulator(void* arg)
 }
 
 
-void app_main()
+void app_main(void)
 {
 	/*** GPIO init ***/
 	gpio_config_t io_conf;
