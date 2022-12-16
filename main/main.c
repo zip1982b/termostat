@@ -71,7 +71,6 @@ static xQueueHandle dataFromDisplay_queue = NULL;
 
 
 typedef struct{
-	uint8_t sensors;
 	uint8_t status_relay;
 	float temp_average;
 } data_to_display_t;
@@ -224,7 +223,7 @@ void vDisplay(void *pvParameter)
 		if(change)
 		{
 			
-			vDrawMenu(menuitem, state, temp, contrast, chip_info, data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average);
+			//vDrawMenu(menuitem, state, temp, contrast, chip_info, data_to_display.status_relay, data_to_display.temp_average);
 			change = 0;
 		}
 
@@ -627,107 +626,59 @@ void vDisplay(void *pvParameter)
 
 
 
-static void vRegulator(void* arg)
+static void vTemperatureSensor(void* arg)
 {
 	i2c_master_init(I2C_MASTER_NUM_DS2482, I2C_MASTER_SDA_DS2482, I2C_MASTER_SCL_DS2482, I2C_MASTER_FREQ_HZ_DS2482, I2C_MASTER_RX_BUF_DS2482, I2C_MASTER_TX_BUF_DS2482);
-	/* Find Devices */
-	uint8_t rslt = 0;
-	float average = 0;
-	float sum = 0;
 	uint8_t status_relay = 0;
 	uint8_t checksum = 0;
-	uint8_t *pROM_NO[3]; // 4 address = pROM_NO[0], pROM_NO[1], pROM_NO[2], pROM_NO[3].
 	
 	uint8_t i = 0;
 	int j;
-	int k;
 	int n;
 	int l;
 	data_to_display_t data_to_display;
 	
-	uint8_t sensors = 0;
-	uint8_t ust = 22;
 	
 	uint8_t get[9]; //get scratch pad
 	int temp;
 	float temperatura;
-	uint8_t delta = 1;
 	vTaskDelay(50 / portTICK_RATE_MS);
 	
 
+	/* Find Devices */
 	if(DS2482_detect())
 	{
+        printf("ds2482 is detected\n");
 		/*ds2482 i2c/1-wire bridge detected*/
 		if(OWReset() && !short_detected)
 		{
 			/*1-wire device detected*/
-			// find address ALL devices
-			printf("\nFIND ALL ******** \n");
-			rslt = OWFirst();
-			while(rslt)
-			{
-				pROM_NO[i] = (uint8_t*) malloc(8); //memory for address
-				sensors++;
-				
-				for(j = 7; j >= 0; j--)
-				{
-					*(pROM_NO[i] + j) = ROM_NO[j];
-					printf("%02X", *(pROM_NO[i] + j));
-				}
+			// find address devices
+			printf("\n1-wire divice is detecting - Finding address ..... \n");
+            if(OWFirst()){
+                printf("1-wire device is find!!! \n");
+                
+                vTaskDelay(100 / portTICK_RATE_MS);
 
-				
-
-				printf("\nSensor# %d\n", i + 1);
-				i++;
-				rslt = OWNext();
-				//printf("result OWNext() = %d\n", rslt);
-			}
-			
-			printf("sensors = %d \n", sensors);
-			printf("1-wire device end find ************ \n");
-			
-			
-			
-			
-			vTaskDelay(100 / portTICK_RATE_MS);
-			
-			if(OWReset() && !short_detected)
-			{
-				OWWriteByte(SkipROM); //0xCC
-				OWWriteByte(WriteScratchpad); //0x4E
-				OWWriteByte(0x4B); //TH
-				OWWriteByte(0x46); //TL
-				OWWriteByte(0x7F); //Config register
-				if(OWReset() && !short_detected)
-				{
-					OWWriteByte(SkipROM); //0xCC
-					OWWriteByte(CopyScratchpad); //0x48
-				}
-				else
-					printf("1-wire device not detected or short_detected = %d\n", short_detected);
-				
-			}
-			else
-				printf("1-wire device not detected or short_detected = %d\n", short_detected);
-
-			
-		}
-		else
-			printf("1-wire device not detected (1) or short_detected = %d\n", short_detected);
-	}
-	else
-		printf("ds2482 i2c/1-wire bridge not detected\n");
-	
-	float *pSensor[sensors];
-	for(uint8_t p = 0; p < sensors; p++){
-		pSensor[p] = (float*) malloc(sizeof(float));
-	}
+			    if(OWReset() && !short_detected){
+                    OWWriteByte(SkipROM); //0xCC
+                    OWWriteByte(WriteScratchpad); //0x4E
+				    OWWriteByte(0x4B); //TH
+				    OWWriteByte(0x46); //TL
+				    OWWriteByte(0x7F); //Config register
+                    if(OWReset() && !short_detected){
+                        OWWriteByte(SkipROM); //0xCC
+                        OWWriteByte(CopyScratchpad); //0x48
+                    } else printf("[4]1-wire device is not detected or short_detected = %d\n", short_detected);
+                } else printf("[3]1-wire device in not detected or short_detected = %d\n", short_detected);
+            } else printf("[2]1-wire device is not find");
+		} else printf("[1]1-wire device is not detected or short_detected = %d\n", short_detected);
+	} else printf("ds2482 id not detected\n");
 	
 	while(1)
 	{
 		vTaskDelay(1000 / portTICK_RATE_MS);
-		xQueueReceive(dataFromDisplay_queue, &ust, 1000/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
-		printf("**********************Cycle**********************************\n");
+		printf("*****Cycle********\n");
 		if(OWReset() && !short_detected && sensors > 0)
 		{
 			
@@ -737,115 +688,88 @@ static void vRegulator(void* arg)
 			printf("ConvertT - delay 1 sec for conversion\n");
 			vTaskDelay(1000 / portTICK_RATE_MS);
 			
-			for(l = 0; l < sensors; l++)
-			{
-				crc8 = 0;
-				if(OWReset() && !short_detected)
+			crc8 = 0;
+			if(OWReset() && !short_detected){
+				vTaskDelay(50 / portTICK_RATE_MS);
+				OWWriteByte(MatchROM); //0x55 - соответствие адреса
+				//printf("send MatchROM command\n");
+				// send ROM address = 64 bit
+				for(uint8_t k = 0; k <= 7; k++){
+					//printf(" %X ", *(pROM_NO[l] + k));
+					OWWriteByte(ROM_NO[k]);
+				}
+				OWWriteByte(ReadScratchpad); //0xBE
+				printf("\n send ReadScratchpad command \n");
+				for (n=0; n<9; n++)
 				{
-					vTaskDelay(50 / portTICK_RATE_MS);
-					OWWriteByte(MatchROM); //0x55 - соответствие адреса
-					//printf("send MatchROM command\n");
-					// send ROM address = 64 bit
-					for(k = 0; k <= 7; k++)
-					{
-						//printf(" %X ", *(pROM_NO[l] + k));
-						OWWriteByte(*(pROM_NO[l] + k));
-					}
-					OWWriteByte(ReadScratchpad); //0xBE
-					printf("\n send ReadScratchpad command \n");
-					for (n=0; n<9; n++)
-					{
-						get[n] = OWReadByte();
-						//printf("get[%d] = %X\n", n, get[n]);
+					get[n] = OWReadByte();
+					//printf("get[%d] = %X\n", n, get[n]);
 								
-						//get[8] не надо проверять crc
-						if(n < 8){
-							calc_crc8(get[n]); // accumulate the CRC
-							//printf("crc8 = %X\n", crc8);
-						}
-						else if(get[8] == crc8){
-							printf("crc = OK\n");
-							checksum = 1;
-						}
-						else{
-							checksum = 0;
-							printf("crc = NOK\n");
-						}
+					//get[8] не надо проверять crc
+					if(n < 8){
+						calc_crc8(get[n]); // accumulate the CRC
+						//printf("crc8 = %X\n", crc8);
 					}
-					printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
-					
-					// расчёт температуры
-					if(checksum){
-						// -
-						if(getbits(get[1], 7, 1))
-						{
-							temp = get[1] << 8 | get[0];
-							temp = (~temp) + 1;
-							temperatura = (temp * 0.0625) * (-1);
-							//printf("Sensor# %d, temp = %f *C\n", l + 1, temperatura);
-						}
-						// +
-						else 
-						{
-							temp = get[1] << 8 | get[0];
-							temperatura = temp * 0.0625;
-							//printf("Sensor# %d, temp = %f *C\n", l + 1, temperatura);
-						}	
-						*pSensor[l] = temperatura; 
+					else if(get[8] == crc8){
+						printf("crc = OK\n");
+						checksum = 1;
 					}
-					else
-						*pSensor[l] = 200.00;
-					
+					else{
+						checksum = 0;
+						printf("crc = NOK\n");
+					}
 				}
-				else{
-					gpio_set_level(GPIO_RELAY1, 0);
-					status_relay = 0;
-					printf("[vRegulator] Relay off - 1-wire device not detected(2) or short_detected = %d\n", short_detected);
+				printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
+				
+				// расчёт температуры
+				if(checksum){
+						/* - */
+					if(getbits(get[1], 7, 1))
+					{
+						temp = get[1] << 8 | get[0];
+						temp = (~temp) + 1;
+						temperatura = (temp * 0.0625) * (-1);
+						printf("temp = %f *C\n", temperatura);
+					}
+						/* + */
+					else 
+					{
+						temp = get[1] << 8 | get[0];
+						temperatura = temp * 0.0625;
+						printf("temp = %f *C\n", temperatura);
+					}	
 				}
 			}
 			
-			printf("[vRegulator] ustavka = %d*C\n", ust);
 			
 			
-			for(uint8_t v = 0; v < sensors; v++){
-				printf("[vRegulator] Sensor#%d = %.4f *C\n", v + 1, *pSensor[v]);
-				sum += *pSensor[v];
-			}	
 			
-			average = sum / sensors;
-			sum = 0;
-			printf("[vRegulator] average = %f *C\n", average);
 				
 				
-			// controller temp
-			if(average < ust - delta){
-				gpio_set_level(GPIO_RELAY1, 1);
-				status_relay = 1;
-				printf("[vRegulator] Relay on\n");
-			}
-						
-			if(average > ust + delta){
-				gpio_set_level(GPIO_RELAY1, 0);
-				status_relay = 0;
-				printf("[vRegulator] Relay off\n");
-			}
-			
+		/*	
 			data_to_display.sensors = sensors;
 			data_to_display.status_relay =  status_relay;
 			data_to_display.temp_average = average;
 			xQueueSendToBack(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS);
-			average = 0;
-		}
-		else
-		{
-			gpio_set_level(GPIO_RELAY1, 0);
-			status_relay = 0;
-			printf("[vRegulator] Relay off - 1-wire device not detected(1) or sensors = 0 or short_detected = %d\n", short_detected);
-		}
+		*/
+        }
 	}
 	vTaskDelete(NULL);
 }
 
+
+
+
+static void vPump(void* arg){
+	uint8_t status_relay = 0;
+    while(1){
+
+				gpio_set_level(GPIO_RELAY1, 1);
+		        vTaskDelay(1000 / portTICK_RATE_MS);
+				gpio_set_level(GPIO_RELAY1, 0);
+    }
+    vTaskDelete(NULL);
+}
 
 void app_main(void)
 {
@@ -909,8 +833,8 @@ void app_main(void)
 	
 	
 	
-	
-	
+    xTaskCreate(vPump, "vPump", 1024 * 2, NULL, 11, NULL);	
+
 	xStatusOLED = xTaskCreate(vDisplay, "vDisplay", 1024 * 2, NULL, 11, &xDisplay_Handle);
 	if(xStatusOLED == pdPASS)
 		printf("Task vDisplay is created!\n");
@@ -918,11 +842,11 @@ void app_main(void)
 		printf("Task vDisplay is not created\n");
 	
 	
-	xStatusReadTemp = xTaskCreate(vRegulator, "vRegulator", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
+	xStatusReadTemp = xTaskCreate(vTemperatureSensor, "vTemperatureSensor", 1024 * 2, NULL, 10, &xRead_Temp_Handle);
 	if(xStatusReadTemp == pdPASS)
-		printf("Task vRegulator is created!\n");
+		printf("Task vTemperatureSensor is created!\n");
 	else
-		printf("Task vRegulator is not created\n");
+		printf("Task vTemperatureSensor is not created\n");
 	
 }
 
