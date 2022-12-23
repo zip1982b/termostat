@@ -41,6 +41,7 @@
 
 
 extern uint8_t contrast;
+extern uint8_t ROM_NO[8];
 
 
 
@@ -531,10 +532,10 @@ void vSetContrast(uint8_t contrast) {
 	//SSD1306_WRITECOMMAND(0x);  
 }
 
-void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, esp_chip_info_t chip_info, uint8_t sensors, uint8_t status_relay, float temp_average)
+void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, esp_chip_info_t chip_info, uint8_t address, uint8_t status_relay, float temperature)
 {
-	char menuItem1[] = "Found sensors";
-	char menuItem2[] = "Set temp";
+	char menuItem1[] = "Sensor address";
+	char menuItem2[] = "Temperature";
 	char menuItem3[] = "Process view";
 	char menuItem4[] = "Chip info";
 	char menuItem5[] = "Network info";
@@ -555,7 +556,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, 
 	/*************** state 10 - Frame 1 ******************************/
 		if(menuitem == 1 && state == 10)
 		{
-			vDisplayMenuItem(menuItem1, 15, 1); // Set relay
+			vDisplayMenuItem(menuItem1, 15, 1); // sensor address 
 			vDisplayMenuItem(menuItem2, 25, 0);
 			vDisplayMenuItem(menuItem3, 35, 0);
 			vDisplayMenuItem(menuItem4, 45, 0);
@@ -564,7 +565,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, 
 		else if(menuitem == 2 && state == 10)
 		{
 			vDisplayMenuItem(menuItem1, 15, 0);
-			vDisplayMenuItem(menuItem2, 25, 1); // Set temp
+			vDisplayMenuItem(menuItem2, 25, 1); // temperature 
 			vDisplayMenuItem(menuItem3, 35, 0);
 			vDisplayMenuItem(menuItem4, 45, 0);
 			SSD1306_UpdateScreen();
@@ -588,7 +589,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, 
 	/************ state 20 - Frame 2 **********************************/
 		else if(menuitem == 2 && state == 20)
 		{
-			vDisplayMenuItem(menuItem2, 15, 1); // Set temp
+			vDisplayMenuItem(menuItem2, 15, 1); // temperature
 			vDisplayMenuItem(menuItem3, 25, 0);
 			vDisplayMenuItem(menuItem4, 35, 0);
 			vDisplayMenuItem(menuItem5, 45, 0);
@@ -722,7 +723,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, 
 	/***************** Page 1 end ***************************/
 	
 	/*****************  Page 2 ******************************/
-	/*** found sensors view ***/
+	/*** sensor address ***/
 	else if(state == 1){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(20, 0); // установить курсор в позицию 20 - горизонталь, 0 - вертикаль
@@ -731,24 +732,33 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, 
 	
 
 		SSD1306_GotoXY(5, 20);
-		SSD1306_Puts("Quantity:", &Font_11x18, SSD1306_COLOR_WHITE);
-		char s[5];
-		itoa(sensors, s, 10);
-		SSD1306_Puts(s, &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts("address:", &Font_7x10, SSD1306_COLOR_WHITE);
+		SSD1306_GotoXY(5, 35);
+		char rom_no[16];
+        uint8_t y = 0; 
+        for(uint8_t i = 0; i<8; i++){
+            itoa(ROM_NO[i], &rom_no[y], 16);
+            y = y + 2;
+        }
+        y = 0;
+        printf("address %s\n", rom_no);
+		//itoa(ROM_NO, rom_no, 16);
+		SSD1306_Puts(rom_no, &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 	
-	/*** set temp view ***/
+	/*** temperature ***/
 	else if(state == 2){
 		SSD1306_Fill(SSD1306_COLOR_BLACK);
 		SSD1306_GotoXY(25, 0); // установить курсор в позицию 15 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem2, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
 		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
 		SSD1306_GotoXY(5, 15);
-		SSD1306_Puts("Value", &Font_11x18, SSD1306_COLOR_WHITE);
+		SSD1306_Puts("Temp = ", &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 35);
-		char t[24];
-		itoa(temp, t, 10);
+		char t[18];
+		//itoa(temperature, t, 10);
+        sprintf(t, "%5.5f", temperature);
 		SSD1306_Puts(t, &Font_11x18, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
@@ -768,7 +778,7 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t temp, uint8_t contrast, 
 		SSD1306_Puts("t = ", &Font_7x10, SSD1306_COLOR_WHITE);
 		
 		char buf[18];
-		sprintf(buf, "%5.5f", temp_average);
+		sprintf(buf, "%5.5f", temperature);
 		SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_Puts("*C", &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();

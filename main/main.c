@@ -24,10 +24,6 @@ Autor: zip1982b
 #include "ds2482.h"
 
 
-
-
-
-
 /* 	
 	cr	- clockwise rotation
 	ccr	- counter clockwise rotation
@@ -68,11 +64,11 @@ static xQueueHandle gpio_evt_queue = NULL;
 static xQueueHandle ENC_queue = NULL;
 static xQueueHandle data_to_display_queue = NULL;
 static xQueueHandle dataFromDisplay_queue = NULL;
+static xQueueHandle status_relay_queue = NULL;
 
 
 typedef struct{
-	uint8_t status_relay;
-	float temp_average;
+	float temperatura;
 } data_to_display_t;
 
 
@@ -176,21 +172,23 @@ void vDisplay(void *pvParameter)
     esp_chip_info(&chip_info);
 
 	portBASE_TYPE xStatusReceive;
+	portBASE_TYPE xdata_to_display_Receive;
 	portBASE_TYPE xStatusSend;
 	enum action rotate;
 	data_to_display_t data_to_display;
-	
+    
+	uint8_t status_relay = 0;
 	
 	uint8_t state = 10; // default state
 	uint8_t frame = 1;
 	uint8_t menuitem = 1; // default item - Contrast
 	
-	int selectRelay = 0;
 	uint8_t contrast = 100; // default contrast value
-	uint8_t temp = 22; // default temp value
+	uint8_t temp = 0; // default temp value
 	uint8_t ust = 0;
 
 	uint8_t change = 1;
+	uint8_t change_status_relay = 1;
 	
 	 
 	SSD1306_Init();
@@ -205,26 +203,30 @@ void vDisplay(void *pvParameter)
 	
 	
     while(1) {
-		/***** data ***********************/
-		xStatusReceive = xQueueReceive(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS); // portMAX_DELAY - (very long time) сколь угодно долго - 100/portTICK_RATE_MS
-		if(xStatusReceive == pdPASS)
+		/***** data form vTemperatureSensor***********************/
+		xdata_to_display_Receive = xQueueReceive(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS); // portMAX_DELAY - very long time
+		if(xdata_to_display_Receive == pdPASS)
 		{
-
 			change = 1;
-			printf("[vDisplay]Receivied data / sensors = %d / status_relay = %d / temp_averag = %f *C\n", data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average);
+//			printf("[vDisplay]Receivied data / sensors = %d / status_relay = %d / temp_averag = %f *C\n", data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average);
 		}
-		
 		/***********************/
+
+		xStatusReceive = xQueueReceive(status_relay_queue, &status_relay, 100/portTICK_RATE_MS); // portMAX_DELAY - very long time
+        if(xStatusReceive == pdPASS){
+            change_status_relay = 1;
+        }
+
 		down_cw = 0;
 		up_ccw = 0;
 		press_button = 0;	
 
 
-		if(change)
+		if(change || change_status_relay)
 		{
 			
-			//vDrawMenu(menuitem, state, temp, contrast, chip_info, data_to_display.status_relay, data_to_display.temp_average);
-			change = 0;
+			vDrawMenu(menuitem, state, contrast, chip_info, ROM_NO[0], status_relay, data_to_display.temperatura);
+			change = change_status_relay = 0;
 		}
 
 		
@@ -628,20 +630,13 @@ void vDisplay(void *pvParameter)
 
 static void vTemperatureSensor(void* arg)
 {
+    data_to_display_t data_to_display;
 	i2c_master_init(I2C_MASTER_NUM_DS2482, I2C_MASTER_SDA_DS2482, I2C_MASTER_SCL_DS2482, I2C_MASTER_FREQ_HZ_DS2482, I2C_MASTER_RX_BUF_DS2482, I2C_MASTER_TX_BUF_DS2482);
-	uint8_t status_relay = 0;
 	uint8_t checksum = 0;
-	
-	uint8_t i = 0;
-	int j;
-	int n;
-	int l;
-	data_to_display_t data_to_display;
-	
 	
 	uint8_t get[9]; //get scratch pad
 	int temp;
-	float temperatura;
+	float temperatura = 0;
 	vTaskDelay(50 / portTICK_RATE_MS);
 	
 
@@ -657,7 +652,10 @@ static void vTemperatureSensor(void* arg)
 			printf("\n1-wire divice is detecting - Finding address ..... \n");
             if(OWFirst()){
                 printf("1-wire device is find!!! \n");
-                
+                for(uint8_t i=0; i<=7; i++){
+                    printf("%X", ROM_NO[i]);
+                }
+                printf("\n");
                 vTaskDelay(100 / portTICK_RATE_MS);
 
 			    if(OWReset() && !short_detected){
@@ -679,13 +677,13 @@ static void vTemperatureSensor(void* arg)
 	{
 		vTaskDelay(1000 / portTICK_RATE_MS);
 		printf("*****Cycle********\n");
-		if(OWReset() && !short_detected && sensors > 0)
+		if(OWReset() && !short_detected)
 		{
 			
 			OWWriteByte(SkipROM); //0xCC - пропуск проверки адресов
-			printf("SkipROM\n");
+			//printf("SkipROM\n");
 			OWWriteByte(ConvertT); //0x44 - все датчики измеряют свою температуру
-			printf("ConvertT - delay 1 sec for conversion\n");
+			//printf("ConvertT - delay 1 sec for conversion\n");
 			vTaskDelay(1000 / portTICK_RATE_MS);
 			
 			crc8 = 0;
@@ -699,8 +697,8 @@ static void vTemperatureSensor(void* arg)
 					OWWriteByte(ROM_NO[k]);
 				}
 				OWWriteByte(ReadScratchpad); //0xBE
-				printf("\n send ReadScratchpad command \n");
-				for (n=0; n<9; n++)
+				//printf("\n send ReadScratchpad command \n");
+				for (uint8_t n=0; n<9; n++)
 				{
 					get[n] = OWReadByte();
 					//printf("get[%d] = %X\n", n, get[n]);
@@ -719,7 +717,7 @@ static void vTemperatureSensor(void* arg)
 						printf("crc = NOK\n");
 					}
 				}
-				printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
+				//printf("ScratchPAD data = %X %X %X %X %X %X %X %X %X\n", get[8], get[7], get[6], get[5], get[4], get[3], get[2], get[1], get[0]);
 				
 				// расчёт температуры
 				if(checksum){
@@ -746,12 +744,10 @@ static void vTemperatureSensor(void* arg)
 			
 				
 				
-		/*	
-			data_to_display.sensors = sensors;
-			data_to_display.status_relay =  status_relay;
-			data_to_display.temp_average = average;
+			
+			data_to_display.temperatura = temperatura;
 			xQueueSendToBack(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS);
-		*/
+		
         }
 	}
 	vTaskDelete(NULL);
@@ -765,8 +761,9 @@ static void vPump(void* arg){
     while(1){
 
 				gpio_set_level(GPIO_RELAY1, 1);
-		        vTaskDelay(1000 / portTICK_RATE_MS);
+		        vTaskDelay(5000 / portTICK_RATE_MS);
 				gpio_set_level(GPIO_RELAY1, 0);
+		        vTaskDelay(5000 / portTICK_RATE_MS);
     }
     vTaskDelete(NULL);
 }
@@ -819,7 +816,7 @@ void app_main(void)
 	ENC_queue = xQueueCreate(10, sizeof(uint32_t));
 
 	data_to_display_queue = xQueueCreate(3, sizeof(data_to_display_t));
-	
+	status_relay_queue = xQueueCreate(3, sizeof(uint8_t));
 	dataFromDisplay_queue = xQueueCreate(8, sizeof(uint8_t)); // ustavka
 	
 	//install gpio isr service
