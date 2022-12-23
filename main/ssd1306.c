@@ -729,21 +729,25 @@ void vDrawMenu(uint8_t menuitem, uint8_t state, uint8_t contrast, esp_chip_info_
 		SSD1306_GotoXY(20, 0); // установить курсор в позицию 20 - горизонталь, 0 - вертикаль
 		SSD1306_Puts(menuItem1, &Font_7x10, SSD1306_COLOR_WHITE); // шрифт Font_7x10, белым цветом
 		SSD1306_DrawLine(10, 12, 110, 12, SSD1306_COLOR_WHITE); // draw line
-	
 
 		SSD1306_GotoXY(5, 20);
 		SSD1306_Puts("address:", &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_GotoXY(5, 35);
-		char rom_no[16];
+		char rom_no1[16];
+		char rom_no2[8];
         uint8_t y = 0; 
         for(uint8_t i = 0; i<8; i++){
-            itoa(ROM_NO[i], &rom_no[y], 16);
+            itoa(ROM_NO[i], &rom_no1[y], 16);
             y = y + 2;
         }
         y = 0;
-        printf("address %s\n", rom_no);
-		//itoa(ROM_NO, rom_no, 16);
-		SSD1306_Puts(rom_no, &Font_7x10, SSD1306_COLOR_WHITE);
+        for(uint8_t j = 7; j<8; j++){
+            itoa(ROM_NO[j], &rom_no2[y], 16);
+            y = y + 2;
+        }
+        y = 0;
+		SSD1306_Puts(rom_no1, &Font_7x10, SSD1306_COLOR_WHITE);
+		SSD1306_Puts(rom_no2, &Font_7x10, SSD1306_COLOR_WHITE);
 		SSD1306_UpdateScreen();
 	}
 	

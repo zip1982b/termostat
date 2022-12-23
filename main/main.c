@@ -203,15 +203,14 @@ void vDisplay(void *pvParameter)
 	
 	
     while(1) {
-		/***** data form vTemperatureSensor***********************/
+		/***** data from vTemperatureSensor***********************/
 		xdata_to_display_Receive = xQueueReceive(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS); // portMAX_DELAY - very long time
 		if(xdata_to_display_Receive == pdPASS)
 		{
 			change = 1;
-//			printf("[vDisplay]Receivied data / sensors = %d / status_relay = %d / temp_averag = %f *C\n", data_to_display.sensors, data_to_display.status_relay, data_to_display.temp_average);
 		}
-		/***********************/
-
+		
+        /******data from vPump*****************/
 		xStatusReceive = xQueueReceive(status_relay_queue, &status_relay, 100/portTICK_RATE_MS); // portMAX_DELAY - very long time
         if(xStatusReceive == pdPASS){
             change_status_relay = 1;
@@ -759,7 +758,6 @@ static void vTemperatureSensor(void* arg)
 static void vPump(void* arg){
 	uint8_t status_relay = 0;
     while(1){
-
 				gpio_set_level(GPIO_RELAY1, 1);
 		        vTaskDelay(5000 / portTICK_RATE_MS);
 				gpio_set_level(GPIO_RELAY1, 0);
@@ -817,7 +815,7 @@ void app_main(void)
 
 	data_to_display_queue = xQueueCreate(3, sizeof(data_to_display_t));
 	status_relay_queue = xQueueCreate(3, sizeof(uint8_t));
-	dataFromDisplay_queue = xQueueCreate(8, sizeof(uint8_t)); // ustavka
+	dataFromDisplay_queue = xQueueCreate(8, sizeof(uint8_t)); 
 	
 	//install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
