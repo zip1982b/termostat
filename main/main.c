@@ -8,11 +8,22 @@ Autor: zip1982b
 */
 
 #include <stdio.h>
+#include <stdint.h> //*
+#include <stddef.h> //*
+#include <string.h> //*
+
+
 #include <stdlib.h>
 #include <esp_types.h>
 
+#include "esp_wifi.h" //*
+#include "nvs_flash.h"
+#include "esp_event.h"
+#include "esp_netif.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 
