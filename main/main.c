@@ -21,7 +21,7 @@ Autor: zip1982b
 #include "esp_event.h"
 #include "esp_netif.h"
 
-#include "protocol_examples_common.h"
+//#include "protocol_examples_common.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -84,7 +84,7 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-static const char *TAG = "wifi station";
+static const char *WIFI_TAG = "wifi station";
 
 static int s_retry_num = 0;
 
@@ -137,7 +137,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY) {
             esp_wifi_connect();
             s_retry_num++;
-            ESP_LOGI(TAG, "retry to connect to the AP");
+            ESP_LOGI(WIFI_TAG, "retry to connect to the AP");
         } else {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
         }
