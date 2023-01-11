@@ -21,7 +21,6 @@ Autor: zip1982b
 #include "esp_event.h"
 #include "esp_netif.h"
 
-//#include "protocol_examples_common.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -85,8 +84,12 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_FAIL_BIT      BIT1
 
 static const char *WIFI_TAG = "wifi station";
+static const char *TAG = "MQTT_EXAMPLE";
 
 static int s_retry_num = 0;
+
+const char topic_pump[] = "/home/kitchen/pump/mode";
+
 
 
 /*
@@ -96,11 +99,7 @@ static int s_retry_num = 0;
 #define GPIO_RELAY1    12
 #define GPIO_OUTPUT_PIN_SEL  (1ULL<<GPIO_RELAY1) //| (1ULL<<GPIO_RELAY2))
 
-
 #define ESP_INTR_FLAG_DEFAULT 0
-
-
-static const char *TAG = "MQTT_EXAMPLE";
 
 
 portBASE_TYPE xStatusOLED;
@@ -110,6 +109,7 @@ xTaskHandle xDisplay_Handle;
 xTaskHandle xRead_Temp_Handle; // identification Read Temp task
 
 static xQueueHandle data_to_display_queue = NULL;
+static xQueueHandle data_to_pump_queue = NULL;
 static xQueueHandle dataFromDisplay_queue = NULL;
 static xQueueHandle status_relay_queue = NULL;
 
@@ -117,8 +117,6 @@ static xQueueHandle status_relay_queue = NULL;
 typedef struct{
 	float temperatura;
 } data_to_display_t;
-
-
 
 
 
@@ -141,10 +139,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         } else {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
         }
-        ESP_LOGI(TAG,"connect to the AP fail");
+        ESP_LOGI(WIFI_TAG,"connect to the AP fail");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(WIFI_TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
@@ -164,16 +162,8 @@ void wifi_init_sta(void)
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                        IP_EVENT_STA_GOT_IP,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_got_ip));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &instance_any_id));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip));
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -190,7 +180,7 @@ void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );
 
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
+    ESP_LOGI(WIFI_TAG, "wifi_init_sta finished.");
 
     /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
      * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
@@ -203,13 +193,13 @@ void wifi_init_sta(void)
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
     if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
+        ESP_LOGI(WIFI_TAG, "connected to ap SSID:%s password:%s",
                  EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
     } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
+        ESP_LOGI(WIFI_TAG, "Failed to connect to SSID:%s, password:%s",
                  EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
     } else {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT");
+        ESP_LOGE(WIFI_TAG, "UNEXPECTED EVENT");
     }
 
     /* The event will not be processed after unregister */
@@ -239,6 +229,11 @@ static void log_error_if_nonzero(const char *message, int error_code)
  */
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
+    char pump_command[4];
+    uint8_t pump = 0;
+    char pump_on[] = "ON";
+    char pump_off[] = "OFF";
+
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
@@ -246,17 +241,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+        //msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
+        //ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
+        msg_id = esp_mqtt_client_subscribe(client, topic_pump, 0);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+        //msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
+        //ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-        msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-        ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
+        //msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
+        //ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -275,8 +270,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
     case MQTT_EVENT_DATA:
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
+        //printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+        //printf("DATA=%.*s\r\n", event->data_len, event->data);
+        if(strncmp(topic_pump, event->topic, event->topic_len)==0){
+            //ESP_LOGI(TAG, "received pump command");
+			strncpy(pump_command, event->data, event->data_len);
+            //printf("command for pump is %s\n", pump_command);
+			//set_speed = atoi(vent_speed);
+            if(strncmp(pump_command, pump_on, 2)==0) pump = 1;
+            else if(strncmp(pump_command, pump_off, 2)==0) pump = 0;
+			xQueueSendToBack(data_to_pump_queue, &pump, 100/portTICK_RATE_MS);
+		}
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -427,8 +431,8 @@ static void vTemperatureSensor(void* arg)
 	
 	while(1)
 	{
-		vTaskDelay(1000 / portTICK_RATE_MS);
-		printf("*****Cycle********\n");
+		vTaskDelay(5000 / portTICK_RATE_MS);
+		//printf("*****Cycle********\n");
 		if(OWReset() && !short_detected)
 		{
 			
@@ -461,7 +465,7 @@ static void vTemperatureSensor(void* arg)
 						//printf("crc8 = %X\n", crc8);
 					}
 					else if(get[8] == crc8){
-						printf("crc = OK\n");
+						//printf("crc = OK\n");
 						checksum = 1;
 					}
 					else{
@@ -479,14 +483,14 @@ static void vTemperatureSensor(void* arg)
 						temp = get[1] << 8 | get[0];
 						temp = (~temp) + 1;
 						temperatura = (temp * 0.0625) * (-1);
-						printf("temp = %f *C\n", temperatura);
-					}
+						printf("temp = %.3f *C\n", temperatura);
+					} 
 						/* + */
 					else 
 					{
 						temp = get[1] << 8 | get[0];
 						temperatura = temp * 0.0625;
-						printf("temp = %f *C\n", temperatura);
+						printf("temp = %.3f *C\n", temperatura);
 					}	
 				}
 			}
@@ -504,15 +508,19 @@ static void vTemperatureSensor(void* arg)
 
 static void vPump(void* arg){
 	uint8_t status_relay = 0;
+    uint8_t pump = 0;
     while(1){
-				gpio_set_level(GPIO_RELAY1, 1);
-                status_relay = 1;
-			    xQueueSendToBack(status_relay_queue, &status_relay, 100/portTICK_RATE_MS);
-		        vTaskDelay(5000 / portTICK_RATE_MS);
-				gpio_set_level(GPIO_RELAY1, 0);
-                status_relay = 0;
-			    xQueueSendToBack(status_relay_queue, &status_relay, 100/portTICK_RATE_MS);
-		        vTaskDelay(5000 / portTICK_RATE_MS);
+		xQueueReceive(data_to_pump_queue, &pump, 100/portTICK_RATE_MS);
+        if(pump){
+            gpio_set_level(GPIO_RELAY1, 1);
+            status_relay = 1;
+			xQueueSendToBack(status_relay_queue, &status_relay, 100/portTICK_RATE_MS);
+        }
+        else {
+			gpio_set_level(GPIO_RELAY1, 0);
+            status_relay = 0;
+			xQueueSendToBack(status_relay_queue, &status_relay, 100/portTICK_RATE_MS);
+        }
     }
     vTaskDelete(NULL);
 }
@@ -534,8 +542,8 @@ void app_main(void)
 
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
 	
+    wifi_init_sta();
 
     /*** GPIO init ***/
 	gpio_config_t io_conf;
@@ -563,10 +571,12 @@ void app_main(void)
 	
 
 	data_to_display_queue = xQueueCreate(3, sizeof(data_to_display_t));
+	data_to_pump_queue = xQueueCreate(3, sizeof(uint8_t));
 	status_relay_queue = xQueueCreate(3, sizeof(uint8_t));
 	dataFromDisplay_queue = xQueueCreate(8, sizeof(uint8_t)); 
 	
 	
+    mqtt_app_start();
 	
     xTaskCreate(vPump, "vPump", 1024 * 2, NULL, 11, NULL);	
 
@@ -583,13 +593,6 @@ void app_main(void)
 	else
 		printf("Task vTemperatureSensor is not created\n");
 	
-    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * examples/protocols/README.md for more information about this function.
-     */
-//    ESP_ERROR_CHECK(example_connect());
 
-    wifi_init_sta();
-    mqtt_app_start();
 }
 
