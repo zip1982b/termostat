@@ -89,6 +89,10 @@ static const char *TAG = "MQTT_EXAMPLE";
 static int s_retry_num = 0;
 
 const char topic_pump[] = "/home/kitchen/pump/mode";
+const char topic_pump_state[] = "/home/kitchen/pump/state";
+const char topic_kitchen_floor_temp[] = "/home/kitchen/floor/temp";
+
+
 
 
 
@@ -241,17 +245,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        //msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-        //ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
         msg_id = esp_mqtt_client_subscribe(client, topic_pump, 0);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-        //msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
-        //ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-        //msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-        //ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -259,8 +255,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
-        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
@@ -298,6 +292,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
+
+
+esp_mqtt_client_handle_t client = NULL;
 static void mqtt_app_start(void)
 {
     esp_mqtt_client_config_t mqtt_cfg = {
@@ -328,7 +325,7 @@ static void mqtt_app_start(void)
     }
 #endif /* CONFIG_BROKER_URL_FROM_STDIN */
 
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    client = esp_mqtt_client_init(&mqtt_cfg);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     esp_mqtt_client_start(client);
@@ -393,6 +390,8 @@ static void vTemperatureSensor(void* arg)
 	uint8_t get[9]; //get scratch pad
 	int temp;
 	float temperatura = 0;
+    char buf_T[7];
+
 	vTaskDelay(50 / portTICK_RATE_MS);
 	
 
@@ -497,7 +496,8 @@ static void vTemperatureSensor(void* arg)
 			
 			data_to_display.temperatura = temperatura;
 			xQueueSendToBack(data_to_display_queue, &data_to_display, 100/portTICK_RATE_MS);
-		
+            sprintf(buf_T, "%.3f", temperatura);
+            esp_mqtt_client_publish(client, topic_kitchen_floor_temp, buf_T, 0, 0, 0);
         }
 	}
 	vTaskDelete(NULL);
@@ -507,19 +507,30 @@ static void vTemperatureSensor(void* arg)
 
 
 static void vPump(void* arg){
-	uint8_t status_relay = 0;
+	portBASE_TYPE xStatus;
+    uint8_t status_relay = 0;
     uint8_t pump = 0;
+    /*
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = CONFIG_BROKER_URL,
+    };
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+    esp_mqtt_client_start(client); */
     while(1){
-		xQueueReceive(data_to_pump_queue, &pump, 100/portTICK_RATE_MS);
-        if(pump){
+		xStatus = xQueueReceive(data_to_pump_queue, &pump, 100/portTICK_RATE_MS);
+
+        if(xStatus == pdPASS && pump){
             gpio_set_level(GPIO_RELAY1, 1);
             status_relay = 1;
 			xQueueSendToBack(status_relay_queue, &status_relay, 100/portTICK_RATE_MS);
+            esp_mqtt_client_publish(client, topic_pump_state, "ON", 0, 0, 0);
         }
-        else {
+        else if((xStatus == pdPASS) && (pump == 0)) {
 			gpio_set_level(GPIO_RELAY1, 0);
             status_relay = 0;
 			xQueueSendToBack(status_relay_queue, &status_relay, 100/portTICK_RATE_MS);
+            esp_mqtt_client_publish(client, topic_pump_state, "OFF", 0, 0, 0);
         }
     }
     vTaskDelete(NULL);
