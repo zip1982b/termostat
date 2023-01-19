@@ -46,17 +46,8 @@ Autor: zip1982b
 #include "ssd1306.h"
 #include "ds2482.h"
 
-#include "driver/timer.h"
 
-#define TIMER_DIVIDER         (16)  //  Hardware timer clock divider
-#define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER)  // convert counter value to seconds
 
-typedef struct {
-    int timer_group;
-    int timer_idx;
-    int alarm_interval;
-    bool auto_reload;
-} example_timer_info_t;
 
 
 /* The examples use WiFi configuration that you can set via project configuration menu
@@ -129,6 +120,7 @@ static xQueueHandle data_to_pump_queue = NULL;
 static xQueueHandle dataFromDisplay_queue = NULL;
 static xQueueHandle status_relay_queue = NULL;
 
+static xQueueHandle s_timer_queue;
 
 typedef struct{
 	float temperatura;
@@ -305,31 +297,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 }
 
 
-static bool IRAM_ATTR timer_group_isr_callback(void *args)
-{
-    BaseType_t high_task_awoken = pdFALSE;
-    example_timer_info_t *info = (example_timer_info_t *) args;
 
-    uint64_t timer_counter_value = timer_group_get_counter_value_in_isr(info->timer_group, info->timer_idx);
-
-    /* Prepare basic event data that will be then sent back to task */
-    example_timer_event_t evt = {
-        .info.timer_group = info->timer_group,
-        .info.timer_idx = info->timer_idx,
-        .info.auto_reload = info->auto_reload,
-        .info.alarm_interval = info->alarm_interval,
-        .timer_counter_value = timer_counter_value
-    };
-
-    if (!info->auto_reload) {
-        timer_counter_value += info->alarm_interval * TIMER_SCALE;
-        timer_group_set_alarm_value_in_isr(info->timer_group, info->timer_idx, timer_counter_value);
-    }
-
-    /* Now just send the event data back to the main program task */
-    xQueueSendFromISR(s_timer_queue, &evt, &high_task_awoken);
-
-    return high_task_awoken == pdTRUE; // return whether we need to yield at the end of ISR
 
 esp_mqtt_client_handle_t client = NULL;
 static void mqtt_app_start(void)
@@ -540,62 +508,29 @@ static void vTemperatureSensor(void* arg)
 	vTaskDelete(NULL);
 }
 
-static void timer0_init(int group, int timer, bool auto_reload, int timer_interval_sec)
-{
-    /* Select and initialize basic parameters of the timer */
-    timer_config_t config = {
-        .divider = TIMER_DIVIDER,
-        .counter_dir = TIMER_COUNT_UP,
-        .counter_en = TIMER_PAUSE,
-        .alarm_en = TIMER_ALARM_EN,
-        .auto_reload = auto_reload,
-    }; // default clock source is APB
-    timer_init(group, timer, &config);
 
 
-    /* Timer's counter will initially start from value below.
-       Also, if auto_reload is set, this value will be automatically reload on alarm */
-    timer_set_counter_value(group, timer, 0);
-
-    /* Configure the alarm value and the interrupt on alarm. */
-    timer_set_alarm_value(group, timer, timer_interval_sec * TIMER_SCALE);
-    timer_enable_intr(group, timer);
-
-    example_timer_info_t *timer_info = calloc(1, sizeof(example_timer_info_t));
-    timer_info->timer_group = group;
-    timer_info->timer_idx = timer;
-    timer_info->auto_reload = auto_reload;
-    timer_info->alarm_interval = timer_interval_sec;
-    timer_isr_callback_add(group, timer, timer_group_isr_callback, timer_info, 0);
-
-    timer_start(group, timer);
-
-}
 
 
 static void vPump(void* arg){
 	portBASE_TYPE xStatus;
-    uint8_t status_relay = 0;
     uint8_t pump = 0;
-
-    timer0_init(TIMER_GROUP_0, TIMER_0, true, 3);
-
 
     while(1){
 		xStatus = xQueueReceive(data_to_pump_queue, &pump, 100/portTICK_RATE_MS);
+        if(xStatus == pdPASS){
+            gpio_set_level(GPIO_RELAY1, pump);
+            printf("queue received .. pump = %d\n", pump);
+            if(pump == 1){
+                esp_mqtt_client_publish(client, topic_pump_state, "ON", 0, 0, 0);
+            }
+            if(pump == 0) {
+                esp_mqtt_client_publish(client, topic_pump_state, "OFF", 0, 0, 0);
+            }
+			xQueueSendToBack(status_relay_queue, &pump, 100/portTICK_RATE_MS);
+        }
 
-        if(xStatus == pdPASS && pump){
-            gpio_set_level(GPIO_RELAY1, 1);
-            status_relay = 1;
-			xQueueSendToBack(status_relay_queue, &status_relay, 100/portTICK_RATE_MS);
-            esp_mqtt_client_publish(client, topic_pump_state, "ON", 0, 0, 0);
-        }
-        else if((xStatus == pdPASS) && (pump == 0)) {
-			gpio_set_level(GPIO_RELAY1, 0);
-            status_relay = 0;
-			xQueueSendToBack(status_relay_queue, &status_relay, 100/portTICK_RATE_MS);
-            esp_mqtt_client_publish(client, topic_pump_state, "OFF", 0, 0, 0);
-        }
+        
     }
     vTaskDelete(NULL);
 }
@@ -649,7 +584,7 @@ void app_main(void)
 	data_to_pump_queue = xQueueCreate(3, sizeof(uint8_t));
 	status_relay_queue = xQueueCreate(3, sizeof(uint8_t));
 	dataFromDisplay_queue = xQueueCreate(8, sizeof(uint8_t)); 
-	
+
 	
     mqtt_app_start();
 	
